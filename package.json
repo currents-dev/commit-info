@@ -5,7 +5,7 @@
   "author": "Gleb Bahmutov <gleb.bahmutov@gmail.com>",
   "contributors": [
     "Gleb Bahmutov <gleb.bahmutov@gmail.com>",
-    "Currents Software Inc"
+    "Currents Software Inc <support@currents.dev>"
   ],
   "bugs": "https://github.com/currents-dev/commit-info/issues",
   "config": {
@@ -45,7 +45,7 @@
   "main": "src/",
   "private": false,
   "publishConfig": {
-    "registry": "http://registry.npmjs.org/"
+    "registry": "https://registry.npmjs.org/"
   },
   "repository": {
     "type": "git",
