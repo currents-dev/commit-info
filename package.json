@@ -1,9 +1,13 @@
 {
-  "name": "@cypress/commit-info",
+  "name": "@currents/commit-info",
   "description": "Collects Git commit info from CI or from CLI",
-  "version": "0.0.0-development",
+  "version": "1.0.0",
   "author": "Gleb Bahmutov <gleb.bahmutov@gmail.com>",
-  "bugs": "https://github.com/cypress-io/commit-info/issues",
+  "contributors": [
+    "Gleb Bahmutov <gleb.bahmutov@gmail.com>",
+    "Currents Software Inc"
+  ],
+  "bugs": "https://github.com/currents-dev/commit-info/issues",
   "config": {
     "pre-git": {
       "commit-msg": "simple",
@@ -30,7 +34,7 @@
     "src/*.js",
     "!src/*-spec.js"
   ],
-  "homepage": "https://github.com/cypress-io/commit-info#readme",
+  "homepage": "https://github.com/currents-dev/commit-info#readme",
   "keywords": [
     "cli",
     "commit",
@@ -45,7 +49,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/cypress-io/commit-info.git"
+    "url": "https://github.com/currents-dev/commit-info.git"
   },
   "scripts": {
     "ban": "ban",
