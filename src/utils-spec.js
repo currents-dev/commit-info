@@ -8,6 +8,38 @@ const fs = require('fs')
 
 /* eslint-env mocha */
 describe('utils', () => {
+  const event = {
+    pull_request: {
+      head: {
+        ref: 'test-ref',
+        sha: 'test-sha'
+      },
+      base: {
+        ref: 'test-ref',
+        sha: 'test-sha'
+      },
+      issue_url: 'test-issue',
+      html_url: 'test-html',
+      title: 'test-title'
+    },
+    sender: {
+      avatar_url: 'test-avatar',
+      html_url: 'test-html'
+    }
+  }
+
+  const eventResult = {
+    headRef: event.pull_request.head.ref,
+    headhSha: event.pull_request.head.sha,
+    baseRef: event.pull_request.base.ref,
+    baseSha: event.pull_request.base.sha,
+    issueUrl: event.pull_request.issue_url,
+    htmlUrl: event.pull_request.html_url,
+    prTitle: event.pull_request.title,
+    senderAvatarUrl: event.sender.avatar_url,
+    senderHtmlUrl: event.sender.html_url
+  }
+
   describe('getFields', () => {
     const { getFields } = require('./utils')
 
@@ -64,38 +96,6 @@ describe('utils', () => {
   describe('getGhaEventData', () => {
     let readFileStub
     const { getGhaEventData } = require('./utils')
-
-    const event = {
-      pull_request: {
-        head: {
-          ref: 'test-ref',
-          sha: 'test-sha'
-        },
-        base: {
-          ref: 'test-ref',
-          sha: 'test-sha'
-        },
-        issue_url: 'test-issue',
-        html_url: 'test-html',
-        title: 'test-title'
-      },
-      sender: {
-        avatar_url: 'test-avatar',
-        html_url: 'test-html'
-      }
-    }
-
-    const eventResult = {
-      headRef: event.pull_request.head.ref,
-      headhSha: event.pull_request.head.sha,
-      baseRef: event.pull_request.base.ref,
-      baseSha: event.pull_request.base.sha,
-      issueUrl: event.pull_request.issue_url,
-      htmlUrl: event.pull_request.html_url,
-      prTitle: event.pull_request.title,
-      senderAvatarUrl: event.sender.avatar_url,
-      senderHtmlUrl: event.sender.html_url
-    }
 
     beforeEach(() => {
       readFileStub = sinon
