@@ -26,4 +26,4 @@ jobs:
           rm /home/runner/work/_temp/_github_workflow/event.json
           cp .github/workflows/event.json /home/runner/work/_temp/_github_workflow/event.json
           cat /home/runner/work/_temp/_github_workflow/event.json
-      - run: npm run gha-e2e
+          npm run gha-e2e
