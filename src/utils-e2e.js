@@ -44,9 +44,6 @@ describe('utils', () => {
         process.env.GITHUB_EVENT_PATH,
         process.env.GITHUB_ACTIONS
       )
-      console.log('EVE::', eventData)
-      console.log('PATH::', process.env.GITHUB_EVENT_PATH)
-      console.log('ACT::', process.env.GITHUB_ACTIONS)
 
       la(JSON.stringify(eventData) === JSON.stringify(eventResult), eventData)
     })
