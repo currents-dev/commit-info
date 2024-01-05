@@ -21,8 +21,9 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 16
-      - run: rm /home/runner/work/_temp/_github_workflow/event.json
-      - run: cp .github/workflows/event.json /home/runner/work/_temp/_github_workflow/event.json
+      - run: |
+          rm /home/runner/work/_temp/_github_workflow/event.json
+          cp .github/workflows/event.json /home/runner/work/_temp/_github_workflow/event.json
+          cat /home/runner/work/_temp/_github_workflow/event.json
       - run: npm ci
-      - run: cat /home/runner/work/_temp/_github_workflow/event.json
       - run: npm run gha-e2e
