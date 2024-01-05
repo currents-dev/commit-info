@@ -60,6 +60,7 @@ function getGhaEventData (eventFilePath, isGha) {
   let eventData
   if (eventFilePath && isGha === 'true') {
     const data = JSON.parse(fs.readFileSync(eventFilePath))
+    console.log('DATA::', data)
     eventData = {
       headRef: data.pull_request.head.ref,
       headhSha: data.pull_request.head.sha,
