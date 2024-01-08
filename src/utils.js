@@ -54,7 +54,7 @@ function getFields () {
  * Gets the event data in github actions environment
  * @param {string} eventFilePath
  * @param {string 'true' | 'false' | undefined} isGha
- * @returns {headRef: string; headhSha: string; baseRef: string; baseSha: string; issueUrl: string; htmlUrl: string; prTitle: string; senderAvatarUrl: string; senderHtmlUrl: string;}
+ * @returns {headRef: string; headSha: string; baseRef: string; baseSha: string; issueUrl: string; htmlUrl: string; prTitle: string; senderAvatarUrl: string; senderHtmlUrl: string;}
  */
 function getGhaEventData (eventFilePath, isGha) {
   try {
@@ -65,7 +65,7 @@ function getGhaEventData (eventFilePath, isGha) {
     const data = JSON.parse(fs.readFileSync(eventFilePath))
     return {
       headRef: data.pull_request.head.ref,
-      headhSha: data.pull_request.head.sha,
+      headSha: data.pull_request.head.sha,
       baseRef: data.pull_request.base.ref,
       baseSha: data.pull_request.base.sha,
       issueUrl: data.pull_request.issue_url,

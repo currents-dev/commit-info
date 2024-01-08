@@ -26,7 +26,7 @@ describe('utils', () => {
 
   const eventResult = {
     headRef: event.pull_request.head.ref,
-    headhSha: event.pull_request.head.sha,
+    headSha: event.pull_request.head.sha,
     baseRef: event.pull_request.base.ref,
     baseSha: event.pull_request.base.sha,
     issueUrl: event.pull_request.issue_url,
