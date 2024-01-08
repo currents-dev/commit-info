@@ -57,22 +57,22 @@ function getFields () {
  * @returns {headRef: string; headhSha: string; baseRef: string; baseSha: string; issueUrl: string; htmlUrl: string; prTitle: string; senderAvatarUrl: string; senderHtmlUrl: string;}
  */
 function getGhaEventData (eventFilePath, isGha) {
-  let eventData
-  if (eventFilePath && isGha === 'true') {
-    const data = JSON.parse(fs.readFileSync(eventFilePath))
-    eventData = {
-      headRef: data.pull_request.head.ref,
-      headhSha: data.pull_request.head.sha,
-      baseRef: data.pull_request.base.ref,
-      baseSha: data.pull_request.base.sha,
-      issueUrl: data.pull_request.issue_url,
-      htmlUrl: data.pull_request.html_url,
-      prTitle: data.pull_request.title,
-      senderAvatarUrl: data.sender.avatar_url,
-      senderHtmlUrl: data.sender.html_url
-    }
+  if (!eventFilePath || !isGha) {
+    return
   }
-  return eventData
+
+  const data = JSON.parse(fs.readFileSync(eventFilePath))
+  return {
+    headRef: data.pull_request.head.ref,
+    headhSha: data.pull_request.head.sha,
+    baseRef: data.pull_request.base.ref,
+    baseSha: data.pull_request.base.sha,
+    issueUrl: data.pull_request.issue_url,
+    htmlUrl: data.pull_request.html_url,
+    prTitle: data.pull_request.title,
+    senderAvatarUrl: data.sender.avatar_url,
+    senderHtmlUrl: data.sender.html_url
+  }
 }
 
 module.exports = {
