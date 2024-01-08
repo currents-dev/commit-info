@@ -11,7 +11,11 @@ const {
   getTimestamp,
   getRemoteOrigin
 } = require('./git-api')
-const { getBranch, getCommitInfoFromEnvironment } = require('./utils')
+const {
+  getBranch,
+  getCommitInfoFromEnvironment,
+  getGhaEventData
+} = require('./utils')
 const Promise = require('bluebird')
 const { mergeWith, or } = require('ramda')
 
@@ -26,7 +30,11 @@ function commitInfo (folder) {
     author: getAuthor(folder),
     sha: getSha(folder),
     timestamp: getTimestamp(folder),
-    remote: getRemoteOrigin(folder)
+    remote: getRemoteOrigin(folder),
+    ghaEventData: getGhaEventData(
+      process.env.GITHUB_EVENT_PATH,
+      process.env.GITHUB_ACTIONS
+    )
   }).then(info => {
     const envVariables = getCommitInfoFromEnvironment()
     debug('git commit: %o', info)
