@@ -62,7 +62,9 @@ function getGhaEventData (eventFilePath, isGha) {
       return
     }
 
+    debug('Retreiving GitHub Actions data from %s', eventFilePath)
     const data = JSON.parse(fs.readFileSync(eventFilePath))
+
     return {
       headRef: data.pull_request.head.ref,
       headSha: data.pull_request.head.sha,
@@ -75,7 +77,7 @@ function getGhaEventData (eventFilePath, isGha) {
       senderHtmlUrl: data.sender.html_url
     }
   } catch (e) {
-    console.debug('[GHA Data Error]: ', e)
+    debug('Retreiving GitHub Actions data error: %s', e)
   }
 }
 
