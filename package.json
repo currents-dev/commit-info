@@ -1,7 +1,7 @@
 {
   "name": "@currents/commit-info",
   "description": "Collects Git commit info from CI or from CLI",
-  "version": "1.0.0",
+  "version": "1.0.1-beta.0",
   "author": "Gleb Bahmutov <gleb.bahmutov@gmail.com>",
   "contributors": [
     "Gleb Bahmutov <gleb.bahmutov@gmail.com>",
