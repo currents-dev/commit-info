@@ -58,7 +58,7 @@ function getFields () {
  */
 function getGhaEventData (eventFilePath, isGha) {
   try {
-    if (!eventFilePath || !isGha) {
+    if (!eventFilePath || isGha !== 'true') {
       return
     }
 
