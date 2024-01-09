@@ -1,5 +1,6 @@
 const { getGitBranch } = require('./git-api')
 const debug = require('debug')('commit-info')
+const fs = require('fs')
 
 function firstFoundValue (keys, object = process.env) {
   const found = keys.find(key => {
@@ -49,9 +50,41 @@ function getFields () {
   return ['branch', 'message', 'email', 'author', 'sha', 'remote', 'timestamp']
 }
 
+/**
+ * Gets the event data in github actions environment
+ * @param {string} eventFilePath
+ * @param {string 'true' | 'false' | undefined} isGha
+ * @returns {headRef: string; headSha: string; baseRef: string; baseSha: string; issueUrl: string; htmlUrl: string; prTitle: string; senderAvatarUrl: string; senderHtmlUrl: string;}
+ */
+function getGhaEventData (eventFilePath, isGha) {
+  try {
+    if (!eventFilePath || isGha !== 'true') {
+      return
+    }
+
+    debug('Retreiving GitHub Actions data from %s', eventFilePath)
+    const data = JSON.parse(fs.readFileSync(eventFilePath))
+
+    return {
+      headRef: data.pull_request.head.ref,
+      headSha: data.pull_request.head.sha,
+      baseRef: data.pull_request.base.ref,
+      baseSha: data.pull_request.base.sha,
+      issueUrl: data.pull_request.issue_url,
+      htmlUrl: data.pull_request.html_url,
+      prTitle: data.pull_request.title,
+      senderAvatarUrl: data.sender.avatar_url,
+      senderHtmlUrl: data.sender.html_url
+    }
+  } catch (e) {
+    debug('Retreiving GitHub Actions data error: %s', e)
+  }
+}
+
 module.exports = {
   firstFoundValue,
   getBranch,
   getCommitInfoFromEnvironment,
-  getFields
+  getFields,
+  getGhaEventData
 }

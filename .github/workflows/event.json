@@ -1,0 +1,19 @@
+{
+    "pull_request": {
+        "head": {
+            "ref": "test-ref",
+            "sha": "test-sha"
+        },
+        "base": {
+            "ref": "test-ref",
+            "sha": "test-sha"
+        },
+        "issue_url": "test-issue",
+        "html_url": "test-html",
+        "title": "test-title"
+    },
+    "sender": {
+        "avatar_url": "test-avatar",
+        "html_url": "test-html"
+    }
+}

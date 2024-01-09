@@ -63,6 +63,7 @@
     "size": "t=\"$(npm pack .)\"; wc -c \"${t}\"; tar tvf \"${t}\"; rm \"${t}\";",
     "test": "npm run unit",
     "unit": "mocha src/*-spec.js",
+    "gha-e2e": "mocha src/utils-e2e.js",
     "semantic-release": "semantic-release pre && npm publish --access public && semantic-release post"
   },
   "release": {
@@ -88,6 +89,7 @@
     "prettier-standard": "8.0.1",
     "semantic-release": "17.2.3",
     "simple-commit-message": "4.1.3",
+    "sinon": "17.0.1",
     "snap-shot-it": "7.9.3",
     "standard": "13.1.0",
     "stub-spawn-once": "2.3.0"
