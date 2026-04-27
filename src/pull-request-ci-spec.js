@@ -1,0 +1,130 @@
+'use strict'
+
+/* eslint-env mocha */
+const la = require('lazy-ass')
+const sinon = require('sinon')
+const fs = require('fs')
+const {
+  resolvePullRequestCi,
+  PROVIDER_GITHUB_ACTIONS,
+  PROVIDER_AZURE_PIPELINES,
+  readGithubActionsPullRequest
+} = require('./pull-request-ci')
+
+describe('pull-request-ci', () => {
+  const githubEvent = {
+    pull_request: {
+      head: { ref: 'head-ref', sha: 'head-sha' },
+      base: { ref: 'base-ref', sha: 'base-sha' },
+      issue_url: 'issue',
+      html_url: 'html',
+      title: 'title'
+    },
+    sender: {
+      avatar_url: 'av',
+      html_url: 'sender'
+    }
+  }
+
+  describe('resolvePullRequestCi', () => {
+    let readStub
+
+    beforeEach(() => {
+      readStub = sinon
+        .stub(fs, 'readFileSync')
+        .returns(JSON.stringify(githubEvent))
+    })
+
+    afterEach(() => {
+      readStub.restore()
+    })
+
+    it('auto prefers GitHub Actions when event file is present', () => {
+      const r = resolvePullRequestCi({
+        env: {
+          GITHUB_ACTIONS: 'true',
+          GITHUB_EVENT_PATH: '/tmp/event.json',
+          BUILD_REASON: 'PullRequest',
+          SYSTEM_PULLREQUEST_PULLREQUESTID: '99'
+        },
+        fs,
+        provider: 'auto'
+      })
+
+      la(r.provider === PROVIDER_GITHUB_ACTIONS, r)
+      la(r.headRef === 'head-ref', r)
+    })
+
+    it('auto falls back to Azure when GitHub is not active', () => {
+      const r = resolvePullRequestCi({
+        env: {
+          BUILD_REASON: 'PullRequest',
+          SYSTEM_PULLREQUEST_PULLREQUESTID: '7',
+          SYSTEM_PULLREQUEST_SOURCEBRANCH: 'refs/heads/f'
+        },
+        fs,
+        provider: 'auto'
+      })
+
+      la(r.provider === PROVIDER_AZURE_PIPELINES, r)
+      la(r.pullRequestId === '7', r)
+    })
+
+    it('github-actions skips Azure even if ADO vars are set', () => {
+      const r = resolvePullRequestCi({
+        env: {
+          GITHUB_ACTIONS: 'true',
+          GITHUB_EVENT_PATH: '/tmp/event.json',
+          BUILD_REASON: 'PullRequest',
+          SYSTEM_PULLREQUEST_PULLREQUESTID: '99'
+        },
+        fs,
+        provider: PROVIDER_GITHUB_ACTIONS
+      })
+
+      la(r.provider === PROVIDER_GITHUB_ACTIONS, r)
+    })
+
+    it('azure-pipelines ignores GitHub event file', () => {
+      const r = resolvePullRequestCi({
+        env: {
+          GITHUB_ACTIONS: 'true',
+          GITHUB_EVENT_PATH: '/tmp/event.json',
+          BUILD_REASON: 'PullRequest',
+          SYSTEM_PULLREQUEST_PULLREQUESTID: '3'
+        },
+        fs,
+        provider: PROVIDER_AZURE_PIPELINES
+      })
+
+      la(r.provider === PROVIDER_AZURE_PIPELINES, r)
+      la(r.pullRequestId === '3', r)
+      la(readStub.called === false, 'should not read GitHub event JSON')
+    })
+
+    it('github-actions returns undefined when not a GHA run', () => {
+      const r = resolvePullRequestCi({
+        env: {},
+        fs,
+        provider: PROVIDER_GITHUB_ACTIONS
+      })
+
+      la(r === undefined, r)
+    })
+  })
+
+  describe('readGithubActionsPullRequest', () => {
+    it('injects fs for tests without stubbing global fs', () => {
+      const fakeFs = {
+        readFileSync: () => JSON.stringify(githubEvent)
+      }
+      const r = readGithubActionsPullRequest(
+        '/x',
+        'true',
+        /** @type {any} */ (fakeFs)
+      )
+
+      la(r.provider === PROVIDER_GITHUB_ACTIONS, r)
+    })
+  })
+})

@@ -1,0 +1,39 @@
+# Azure Pipelines — GitHub-hosted repo
+#
+# First-time setup in Azure DevOps:
+# 1. Project Settings → Pipelines → Create pipeline (or New pipeline)
+# 2. GitHub → authorize → select this repository
+# 3. Existing Azure Pipelines YAML file → branch → /azure-pipelines.yml
+#
+# PR validation: open a PR targeting main (or master). BUILD_REASON will be
+# PullRequest and npm run ado-pr-verify will assert adoEventData is populated.
+
+trigger:
+  branches:
+    include:
+      - main
+      - master
+
+pr:
+  branches:
+    include:
+      - main
+      - master
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - task: NodeTool@0
+    displayName: Use Node.js 18
+    inputs:
+      versionSpec: 18.x
+
+  - script: npm ci
+    displayName: npm ci
+
+  - script: npm test
+    displayName: Unit tests
+
+  - script: npm run ado-pr-verify
+    displayName: Verify Azure PR → commit-info adoEventData

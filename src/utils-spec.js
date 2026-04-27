@@ -125,4 +125,66 @@ describe('utils', () => {
       la(eventData === undefined, eventData)
     })
   })
+
+  describe('getAdoPrEventData', () => {
+    const { getAdoPrEventData } = require('./utils')
+
+    it('returns undefined when build is not a pull request', () => {
+      const eventData = getAdoPrEventData({
+        BUILD_REASON: 'IndividualCI'
+      })
+
+      la(eventData === undefined, eventData)
+    })
+
+    it('returns undefined when pull request id is missing', () => {
+      const eventData = getAdoPrEventData({
+        BUILD_REASON: 'PullRequest'
+      })
+
+      la(eventData === undefined, eventData)
+    })
+
+    it('returns PR metadata from Azure Pipelines env vars', () => {
+      const eventData = getAdoPrEventData({
+        BUILD_REASON: 'PullRequest',
+        SYSTEM_PULLREQUEST_PULLREQUESTID: '123',
+        SYSTEM_PULLREQUEST_SOURCEBRANCH: 'refs/heads/feature-name',
+        SYSTEM_PULLREQUEST_TARGETBRANCH: 'refs/heads/main',
+        BUILD_SOURCEBRANCH: 'refs/pull/123/merge',
+        SYSTEM_PULLREQUEST_SOURCECOMMITID: 'deadbeef',
+        SYSTEM_PULLREQUEST_TARGETCOMMITID: 'cafebabe',
+        SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: 'https://dev.azure.com/org/',
+        SYSTEM_TEAMPROJECT: 'My Project',
+        BUILD_REPOSITORY_NAME: 'my-repo',
+        SYSTEM_PULLREQUEST_TITLE: 'Fix the thing'
+      })
+
+      la(eventData.pullRequestId === '123', eventData)
+      la(eventData.buildSourceBranch === 'refs/pull/123/merge', eventData)
+      la(eventData.headRef === 'refs/heads/feature-name', eventData)
+      la(eventData.baseRef === 'refs/heads/main', eventData)
+      la(eventData.headSha === 'deadbeef', eventData)
+      la(eventData.baseSha === 'cafebabe', eventData)
+      la(eventData.prTitle === 'Fix the thing', eventData)
+      la(
+        eventData.htmlUrl ===
+          'https://dev.azure.com/org/My%20Project/_git/my-repo/pullrequest/123',
+        eventData
+      )
+      la(eventData.issueUrl === null, eventData)
+      la(eventData.senderAvatarUrl === null, eventData)
+      la(eventData.senderHtmlUrl === null, eventData)
+    })
+
+    it('falls back headSha to BUILD_SOURCEVERSION', () => {
+      const eventData = getAdoPrEventData({
+        BUILD_REASON: 'PullRequest',
+        SYSTEM_PULLREQUEST_PULLREQUESTID: '1',
+        BUILD_SOURCEVERSION: 'abc123'
+      })
+
+      la(eventData.headSha === 'abc123', eventData)
+    })
+  })
 })

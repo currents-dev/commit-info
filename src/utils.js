@@ -1,6 +1,11 @@
 const { getGitBranch } = require('./git-api')
 const debug = require('debug')('commit-info')
 const fs = require('fs')
+const {
+  readGithubActionsPullRequest,
+  readAzurePipelinesPullRequest,
+  withoutProvider
+} = require('./pull-request-ci')
 
 function firstFoundValue (keys, object = process.env) {
   const found = keys.find(key => {
@@ -57,28 +62,19 @@ function getFields () {
  * @returns {headRef: string; headSha: string; baseRef: string; baseSha: string; issueUrl: string; htmlUrl: string; prTitle: string; senderAvatarUrl: string; senderHtmlUrl: string;}
  */
 function getGhaEventData (eventFilePath, isGha) {
-  try {
-    if (!eventFilePath || isGha !== 'true') {
-      return
-    }
+  const record = readGithubActionsPullRequest(eventFilePath, isGha, fs)
+  return withoutProvider(record)
+}
 
-    debug('Retreiving GitHub Actions data from %s', eventFilePath)
-    const data = JSON.parse(fs.readFileSync(eventFilePath))
-
-    return {
-      headRef: data.pull_request.head.ref,
-      headSha: data.pull_request.head.sha,
-      baseRef: data.pull_request.base.ref,
-      baseSha: data.pull_request.base.sha,
-      issueUrl: data.pull_request.issue_url,
-      htmlUrl: data.pull_request.html_url,
-      prTitle: data.pull_request.title,
-      senderAvatarUrl: data.sender.avatar_url,
-      senderHtmlUrl: data.sender.html_url
-    }
-  } catch (e) {
-    debug('Retreiving GitHub Actions data error: %s', e)
-  }
+/**
+ * Pull request metadata from Azure Pipelines when the job is PR-triggered.
+ * Uses predefined variables as env vars (dots → underscores, uppercase).
+ * @param {NodeJS.ProcessEnv} [env=process.env]
+ * @returns {{ pullRequestId: string; buildSourceBranch: string | null; headRef: string | null; headSha: string | null; baseRef: string | null; baseSha: string | null; issueUrl: null; htmlUrl: string | null; prTitle: string | null; senderAvatarUrl: null; senderHtmlUrl: null } | undefined}
+ */
+function getAdoPrEventData (env = process.env) {
+  const record = readAzurePipelinesPullRequest(env)
+  return withoutProvider(record)
 }
 
 module.exports = {
@@ -86,5 +82,6 @@ module.exports = {
   getBranch,
   getCommitInfoFromEnvironment,
   getFields,
-  getGhaEventData
+  getGhaEventData,
+  getAdoPrEventData
 }

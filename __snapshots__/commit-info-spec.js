@@ -8,7 +8,10 @@ exports['commit-info no environment variables has certain api 1'] = [
   "getRemoteOrigin",
   "getSubject",
   "getTimestamp",
-  "getBody"
+  "getBody",
+  "resolvePullRequestCi",
+  "PROVIDER_GITHUB_ACTIONS",
+  "PROVIDER_AZURE_PIPELINES"
 ]
 
 exports['commit-info no environment variables returns information 1'] = {
@@ -41,7 +44,10 @@ exports['commit-info combination with environment variables has certain api 1'] 
   "getRemoteOrigin",
   "getSubject",
   "getTimestamp",
-  "getBody"
+  "getBody",
+  "resolvePullRequestCi",
+  "PROVIDER_GITHUB_ACTIONS",
+  "PROVIDER_AZURE_PIPELINES"
 ]
 
 exports['commit-info combination with environment variables returns information 1'] = {
