@@ -219,14 +219,14 @@ describe('utils', () => {
       la(eventData.prTitle == null, eventData)
     })
 
-    it('falls back headSha to BUILD_SOURCEVERSION', () => {
+    it('leaves headSha null when SOURCECOMMITID absent (not BUILD_SOURCEVERSION)', () => {
       const eventData = getAdoPrEventData({
         BUILD_REASON: 'PullRequest',
         SYSTEM_PULLREQUEST_PULLREQUESTID: '1',
         BUILD_SOURCEVERSION: 'abc123'
       })
 
-      la(eventData.headSha === 'abc123', eventData)
+      la(eventData.headSha == null, eventData)
       la(eventData.pullRequestNumber === '1', eventData)
       la(eventData.pullRequestId == null, eventData)
       la(eventData.htmlUrl == null, eventData)

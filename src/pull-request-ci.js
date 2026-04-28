@@ -121,8 +121,7 @@ function readAzurePipelinesPullRequest (env) {
 
     const headRef = env.SYSTEM_PULLREQUEST_SOURCEBRANCH || null
     const baseRef = env.SYSTEM_PULLREQUEST_TARGETBRANCH || null
-    const headSha =
-      env.SYSTEM_PULLREQUEST_SOURCECOMMITID || env.BUILD_SOURCEVERSION || null
+    const headSha = env.SYSTEM_PULLREQUEST_SOURCECOMMITID || null
     // Azure Pipelines exposes no predefined variable for the PR base (merge
     // target) commit SHA. Env-only callers get null; commitInfo() calls
     // enrichAzurePullRequestCi(), which fills baseSha from the Git REST API
