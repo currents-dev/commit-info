@@ -223,6 +223,14 @@ function adoGetPullRequestApiUrl (env) {
 
 function httpGetJson (href, token) {
   return new Promise((resolve, reject) => {
+    let settled = false
+    const refs = {}
+    const settle = (fn, value) => {
+      if (settled) return
+      settled = true
+      if (refs.req) refs.req.setTimeout(0)
+      fn(value)
+    }
     const u = new URL(href)
     const lib = u.protocol === 'https:' ? https : http
     const defaultPort = u.protocol === 'https:' ? 443 : 80
@@ -237,7 +245,7 @@ function httpGetJson (href, token) {
         Accept: 'application/json'
       }
     }
-    const req = lib.request(opts, res => {
+    refs.req = lib.request(opts, res => {
       let body = ''
       res.setEncoding('utf8')
       res.on('data', chunk => {
@@ -246,18 +254,26 @@ function httpGetJson (href, token) {
       res.on('end', () => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           try {
-            resolve(JSON.parse(body))
+            settle(resolve, JSON.parse(body))
           } catch (err) {
-            reject(err)
+            settle(reject, err)
           }
         } else {
-          reject(
+          settle(
+            reject,
             new Error('HTTP ' + res.statusCode + ': ' + body.slice(0, 240))
           )
         }
       })
     })
-    req.on('error', reject)
+    const req = refs.req
+    req.setTimeout(30000, () => {
+      req.destroy()
+      settle(reject, new Error(`HTTP GET timed out after 30000ms: ${href}`))
+    })
+    req.on('error', err => {
+      settle(reject, err)
+    })
     req.end()
   })
 }
