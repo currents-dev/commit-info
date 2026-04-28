@@ -1,9 +1,11 @@
-# Azure Pipelines — GitHub-hosted repo
+# Azure Pipelines — Azure Repos (Git in Azure DevOps)
 #
-# First-time setup in Azure DevOps:
-# 1. Project Settings → Pipelines → Create pipeline (or New pipeline)
-# 2. GitHub → authorize → select this repository
-# 3. Existing Azure Pipelines YAML file → branch → /azure-pipelines.yml
+# First-time setup:
+# 1. Pipelines → New pipeline → Azure Repos Git → select this repo
+# 2. Existing Azure Pipelines YAML file → branch → /azure-pipelines.yml
+#
+# Push builds: only for branches listed under trigger (main/master here).
+# PR builds: create a Pull Request targeting main/master; BUILD_REASON=PullRequest.
 #
 
 trigger:
