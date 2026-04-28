@@ -193,6 +193,56 @@ describe('pull-request-ci', () => {
       })
     })
 
+    it('backfills baseSha (and headSha) from REST lastMerge*Commit', () => {
+      const ci = {
+        provider: PROVIDER_AZURE_PIPELINES,
+        prTitle: 'x',
+        baseSha: null,
+        headSha: null
+      }
+      const env = {
+        SYSTEM_ACCESSTOKEN: 't',
+        SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: 'https://fab.visualstudio.com/',
+        SYSTEM_TEAMPROJECT: 'P',
+        BUILD_REPOSITORY_ID: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        SYSTEM_PULLREQUEST_PULLREQUESTID: '1'
+      }
+      const fetchJson = () =>
+        Promise.resolve({
+          lastMergeTargetCommit: { commitId: 'cafebabe' },
+          lastMergeSourceCommit: { commitId: 'deadbeef' }
+        })
+      return enrichAzurePullRequestCi(ci, env, { fetchJson }).then(out => {
+        la(out.baseSha === 'cafebabe', out)
+        la(out.headSha === 'deadbeef', out)
+      })
+    })
+
+    it('does not overwrite headSha already provided by env', () => {
+      const ci = {
+        provider: PROVIDER_AZURE_PIPELINES,
+        prTitle: 'x',
+        baseSha: null,
+        headSha: 'from-env'
+      }
+      const env = {
+        SYSTEM_ACCESSTOKEN: 't',
+        SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: 'https://fab.visualstudio.com/',
+        SYSTEM_TEAMPROJECT: 'P',
+        BUILD_REPOSITORY_ID: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        SYSTEM_PULLREQUEST_PULLREQUESTID: '1'
+      }
+      const fetchJson = () =>
+        Promise.resolve({
+          lastMergeTargetCommit: { commitId: 'cafebabe' },
+          lastMergeSourceCommit: { commitId: 'rest-head' }
+        })
+      return enrichAzurePullRequestCi(ci, env, { fetchJson }).then(out => {
+        la(out.baseSha === 'cafebabe', out)
+        la(out.headSha === 'from-env', out)
+      })
+    })
+
     it('returns same ci when token is missing', () => {
       const ci = { provider: PROVIDER_AZURE_PIPELINES, prTitle: 'x' }
       return enrichAzurePullRequestCi(ci, {}, {}).then(out => {

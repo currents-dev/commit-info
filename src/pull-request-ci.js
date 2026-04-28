@@ -123,6 +123,11 @@ function readAzurePipelinesPullRequest (env) {
     const baseRef = env.SYSTEM_PULLREQUEST_TARGETBRANCH || null
     const headSha =
       env.SYSTEM_PULLREQUEST_SOURCECOMMITID || env.BUILD_SOURCEVERSION || null
+    // SYSTEM_PULLREQUEST_TARGETCOMMITID is not in the official Azure Pipelines
+    // predefined-variables list, so on most agents it is unset and baseSha is
+    // null here. The documented source for the target commit SHA is the Git PR
+    // REST API (lastMergeTargetCommit.commitId), which enrichAzurePullRequestCi
+    // populates when SYSTEM_ACCESSTOKEN and repository identifiers are available.
     const baseSha = env.SYSTEM_PULLREQUEST_TARGETCOMMITID || null
     const buildSourceBranch = env.BUILD_SOURCEBRANCH || null
 
@@ -287,12 +292,21 @@ function enrichAzurePullRequestCi (ci, env, options = {}) {
     .then(data => {
       try {
         const createdBy = data && data.createdBy ? data.createdBy : {}
+        const lastMergeTargetCommit =
+          data && data.lastMergeTargetCommit ? data.lastMergeTargetCommit : {}
+        const lastMergeSourceCommit =
+          data && data.lastMergeSourceCommit ? data.lastMergeSourceCommit : {}
         return {
           ...ci,
           prTitle:
             data && data.title != null && String(data.title) !== ''
               ? data.title
               : ci.prTitle,
+          // Documented PR target/source commit IDs from the Git PR REST payload;
+          // backfills baseSha (which has no documented env-var source) and only
+          // overrides headSha when env did not already provide one.
+          baseSha: lastMergeTargetCommit.commitId || ci.baseSha,
+          headSha: ci.headSha || lastMergeSourceCommit.commitId || null,
           senderAvatarUrl: createdBy.imageUrl || ci.senderAvatarUrl,
           senderHtmlUrl: createdBy.url || ci.senderHtmlUrl
         }
