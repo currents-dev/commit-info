@@ -157,7 +157,8 @@ describe('utils', () => {
         SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: 'https://dev.azure.com/org/',
         SYSTEM_TEAMPROJECT: 'My Project',
         BUILD_REPOSITORY_NAME: 'my-repo',
-        SYSTEM_PULLREQUEST_TITLE: 'Fix the thing'
+        SYSTEM_PULLREQUEST_TITLE: 'Fix the thing',
+        BUILD_REQUESTEDFORID: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
       })
 
       la(eventData.pullRequestNumber === '123', eventData)
@@ -179,8 +180,29 @@ describe('utils', () => {
         eventData
       )
       la(eventData.issueUrl === null, eventData)
-      la(eventData.senderAvatarUrl === null, eventData)
-      la(eventData.senderHtmlUrl === null, eventData)
+      la(
+        eventData.senderHtmlUrl ===
+          'https://dev.azure.com/org/_usersSettings/about?userId=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        eventData
+      )
+      la(
+        eventData.senderAvatarUrl ===
+          'https://dev.azure.com/org/_apis/GraphProfile/MemberAvatars/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa?size=2&api-version=5.1-preview.1',
+        eventData
+      )
+    })
+
+    it('derives prTitle from merge commit message when title env is unset', () => {
+      const eventData = getAdoPrEventData({
+        BUILD_REASON: 'PullRequest',
+        SYSTEM_PULLREQUEST_PULLREQUESTID: '1',
+        SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: 'https://dev.azure.com/org/',
+        SYSTEM_TEAMPROJECT: 'P',
+        BUILD_REPOSITORY_NAME: 'r',
+        BUILD_SOURCEVERSIONMESSAGE: 'Merged PR 1: feat: hello from ado'
+      })
+
+      la(eventData.prTitle === 'feat: hello from ado', eventData)
     })
 
     it('falls back headSha to BUILD_SOURCEVERSION', () => {

@@ -8,7 +8,8 @@ const {
   resolvePullRequestCi,
   PROVIDER_GITHUB_ACTIONS,
   PROVIDER_AZURE_PIPELINES,
-  readGithubActionsPullRequest
+  readGithubActionsPullRequest,
+  adoPrTitleFromEnv
 } = require('./pull-request-ci')
 
 describe('pull-request-ci', () => {
@@ -131,6 +132,32 @@ describe('pull-request-ci', () => {
       })
 
       la(r === undefined, r)
+    })
+  })
+
+  describe('adoPrTitleFromEnv', () => {
+    it('prefers SYSTEM_PULLREQUEST_TITLE', () => {
+      la(
+        adoPrTitleFromEnv({
+          SYSTEM_PULLREQUEST_TITLE: 'Explicit',
+          BUILD_SOURCEVERSIONMESSAGE: 'Merged PR 1: ignored'
+        }) === 'Explicit'
+      )
+    })
+
+    it('strips Merged PR prefix from BUILD_SOURCEVERSIONMESSAGE', () => {
+      la(
+        adoPrTitleFromEnv({
+          BUILD_SOURCEVERSIONMESSAGE: 'Merged PR 42: my title'
+        }) === 'my title'
+      )
+    })
+
+    it('uses full first line when not a Merged PR message', () => {
+      la(
+        adoPrTitleFromEnv({ BUILD_SOURCEVERSIONMESSAGE: 'plain subject' }) ===
+          'plain subject'
+      )
     })
   })
 

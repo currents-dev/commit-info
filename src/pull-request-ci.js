@@ -12,6 +12,54 @@ function withoutProvider (record) {
 }
 
 /**
+ * Azure Repos PR builds rarely set SYSTEM_PULLREQUEST_TITLE; merge commit message
+ * is usually "Merged PR {id}: {title}" (first line only in BUILD_SOURCEVERSIONMESSAGE).
+ * @param {NodeJS.ProcessEnv} env
+ */
+function adoPrTitleFromEnv (env) {
+  const explicit = env.SYSTEM_PULLREQUEST_TITLE
+  if (explicit) {
+    return explicit
+  }
+  const msg = env.BUILD_SOURCEVERSIONMESSAGE
+  if (!msg) {
+    return null
+  }
+  const merged = msg.match(/^Merged PR \d+: ?(.*)$/)
+  if (merged) {
+    return merged[1] || null
+  }
+  return msg
+}
+
+/**
+ * @param {string | null | undefined} collectionUri
+ * @param {string | null | undefined} userId Build.RequestedForId
+ */
+function adoSenderHtmlUrl (collectionUri, userId) {
+  if (!collectionUri || !userId) {
+    return null
+  }
+  const root = collectionUri.replace(/\/$/, '')
+  return `${root}/_usersSettings/about?userId=${encodeURIComponent(userId)}`
+}
+
+/**
+ * Graph profile avatar (may require auth to fetch; same pattern as ADO UI).
+ * @param {string | null | undefined} collectionUri
+ * @param {string | null | undefined} userId Build.RequestedForId
+ */
+function adoSenderAvatarUrl (collectionUri, userId) {
+  if (!collectionUri || !userId) {
+    return null
+  }
+  const root = collectionUri.replace(/\/$/, '')
+  return `${root}/_apis/GraphProfile/MemberAvatars/${encodeURIComponent(
+    userId
+  )}?size=2&api-version=5.1-preview.1`
+}
+
+/**
  * @param {string} eventFilePath
  * @param {string | undefined} isGha
  * @param {typeof import('fs')} fs
@@ -78,6 +126,7 @@ function readAzurePipelinesPullRequest (env) {
 
     // pullRequestId: canonical PR URL only; null if env cannot build it (no numeric fallback).
     const pullRequestId = htmlUrl
+    const requestedForId = env.BUILD_REQUESTEDFORID || null
 
     return {
       provider: PROVIDER_AZURE_PIPELINES,
@@ -90,9 +139,9 @@ function readAzurePipelinesPullRequest (env) {
       baseSha,
       issueUrl: null,
       htmlUrl,
-      prTitle: env.SYSTEM_PULLREQUEST_TITLE || null,
-      senderAvatarUrl: null,
-      senderHtmlUrl: null
+      prTitle: adoPrTitleFromEnv(env),
+      senderAvatarUrl: adoSenderAvatarUrl(collectionUri, requestedForId),
+      senderHtmlUrl: adoSenderHtmlUrl(collectionUri, requestedForId)
     }
   } catch (e) {
     debug('Retrieving Azure DevOps PR data error: %s', e)
@@ -133,6 +182,9 @@ module.exports = {
   PROVIDER_GITHUB_ACTIONS,
   PROVIDER_AZURE_PIPELINES,
   withoutProvider,
+  adoPrTitleFromEnv,
+  adoSenderHtmlUrl,
+  adoSenderAvatarUrl,
   readGithubActionsPullRequest,
   readAzurePipelinesPullRequest,
   resolvePullRequestCi
