@@ -10,7 +10,14 @@ const PROVIDER_AZURE_PIPELINES = 'azure-pipelines'
 
 function withoutProvider (record) {
   if (!record) return
-  const { provider, ...rest } = record
+  const rest = {}
+  const keys = Object.keys(record)
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i]
+    if (key !== 'provider') {
+      rest[key] = record[key]
+    }
+  }
   return rest
 }
 
