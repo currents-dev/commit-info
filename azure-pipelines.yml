@@ -5,8 +5,6 @@
 # 2. GitHub → authorize → select this repository
 # 3. Existing Azure Pipelines YAML file → branch → /azure-pipelines.yml
 #
-# PR validation: open a PR targeting main (or master). BUILD_REASON will be
-# PullRequest and npm run ado-pr-verify will assert adoEventData is populated.
 
 trigger:
   branches:
