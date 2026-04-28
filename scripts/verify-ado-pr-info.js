@@ -28,9 +28,14 @@ commitInfo(process.cwd(), { pullRequestProvider: 'azure-pipelines' })
       ado,
       'expected adoEventData on Azure PR build; is SYSTEM_PULLREQUEST_PULLREQUESTID set?'
     )
+    la(ado.pullRequestNumber, 'expected pullRequestNumber from env')
     la(
       ado.pullRequestId,
-      'expected pullRequestId from SYSTEM_PULLREQUEST_PULLREQUESTID'
+      'expected pullRequestId (PR URL); SYSTEM_TEAMFOUNDATIONCOLLECTIONURI / TEAMPROJECT / BUILD_REPOSITORY_NAME missing?'
+    )
+    la(
+      ado.pullRequestId === ado.htmlUrl,
+      'pullRequestId must equal htmlUrl (canonical PR URL)'
     )
   })
   .catch(err => {

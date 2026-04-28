@@ -160,7 +160,13 @@ describe('utils', () => {
         SYSTEM_PULLREQUEST_TITLE: 'Fix the thing'
       })
 
-      la(eventData.pullRequestId === '123', eventData)
+      la(eventData.pullRequestNumber === '123', eventData)
+      la(
+        eventData.pullRequestId ===
+          'https://dev.azure.com/org/My%20Project/_git/my-repo/pullrequest/123',
+        eventData
+      )
+      la(eventData.pullRequestId === eventData.htmlUrl, eventData)
       la(eventData.buildSourceBranch === 'refs/pull/123/merge', eventData)
       la(eventData.headRef === 'refs/heads/feature-name', eventData)
       la(eventData.baseRef === 'refs/heads/main', eventData)
@@ -185,6 +191,9 @@ describe('utils', () => {
       })
 
       la(eventData.headSha === 'abc123', eventData)
+      la(eventData.pullRequestNumber === '1', eventData)
+      la(eventData.pullRequestId == null, eventData)
+      la(eventData.htmlUrl == null, eventData)
     })
   })
 })

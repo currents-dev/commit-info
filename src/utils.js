@@ -70,7 +70,7 @@ function getGhaEventData (eventFilePath, isGha) {
  * Pull request metadata from Azure Pipelines when the job is PR-triggered.
  * Uses predefined variables as env vars (dots → underscores, uppercase).
  * @param {NodeJS.ProcessEnv} [env=process.env]
- * @returns {{ pullRequestId: string; buildSourceBranch: string | null; headRef: string | null; headSha: string | null; baseRef: string | null; baseSha: string | null; issueUrl: null; htmlUrl: string | null; prTitle: string | null; senderAvatarUrl: null; senderHtmlUrl: null } | undefined}
+ * @returns {object | undefined} PR fields; Azure: pullRequestId is htmlUrl or null (never a numeric fallback)
  */
 function getAdoPrEventData (env = process.env) {
   const record = readAzurePipelinesPullRequest(env)

@@ -51,8 +51,8 @@ function readAzurePipelinesPullRequest (env) {
       return
     }
 
-    const pullRequestId = env.SYSTEM_PULLREQUEST_PULLREQUESTID
-    if (!pullRequestId) {
+    const pullRequestNumber = env.SYSTEM_PULLREQUEST_PULLREQUESTID
+    if (!pullRequestNumber) {
       return
     }
 
@@ -66,17 +66,23 @@ function readAzurePipelinesPullRequest (env) {
     let htmlUrl = null
     const collectionUri = env.SYSTEM_TEAMFOUNDATIONCOLLECTIONURI
     const teamProject = env.SYSTEM_TEAMPROJECT
-    const repoName = env.BUILD_REPOSITORY_NAME
-    if (collectionUri && teamProject && repoName) {
+    const repositoryName = env.BUILD_REPOSITORY_NAME
+    if (collectionUri && teamProject && repositoryName) {
       const base = collectionUri.replace(/\/$/, '')
       htmlUrl = `${base}/${encodeURIComponent(
         teamProject
-      )}/_git/${encodeURIComponent(repoName)}/pullrequest/${pullRequestId}`
+      )}/_git/${encodeURIComponent(
+        repositoryName
+      )}/pullrequest/${pullRequestNumber}`
     }
+
+    // pullRequestId: canonical PR URL only; null if env cannot build it (no numeric fallback).
+    const pullRequestId = htmlUrl
 
     return {
       provider: PROVIDER_AZURE_PIPELINES,
       pullRequestId,
+      pullRequestNumber,
       buildSourceBranch,
       headRef,
       headSha,

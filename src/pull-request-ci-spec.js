@@ -67,7 +67,8 @@ describe('pull-request-ci', () => {
       })
 
       la(r.provider === PROVIDER_AZURE_PIPELINES, r)
-      la(r.pullRequestId === '7', r)
+      la(r.pullRequestNumber === '7', r)
+      la(r.pullRequestId == null, r)
     })
 
     it('github-actions skips Azure even if ADO vars are set', () => {
@@ -98,8 +99,28 @@ describe('pull-request-ci', () => {
       })
 
       la(r.provider === PROVIDER_AZURE_PIPELINES, r)
-      la(r.pullRequestId === '3', r)
+      la(r.pullRequestNumber === '3', r)
+      la(r.pullRequestId == null, r)
       la(readStub.called === false, 'should not read GitHub event JSON')
+    })
+
+    it('azure-pipelines pullRequestId is htmlUrl when collection/project/repo are set', () => {
+      const url = 'https://dev.azure.com/acme/P/_git/r/pullrequest/3'
+      const r = resolvePullRequestCi({
+        env: {
+          BUILD_REASON: 'PullRequest',
+          SYSTEM_PULLREQUEST_PULLREQUESTID: '3',
+          SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: 'https://dev.azure.com/acme/',
+          SYSTEM_TEAMPROJECT: 'P',
+          BUILD_REPOSITORY_NAME: 'r'
+        },
+        fs,
+        provider: PROVIDER_AZURE_PIPELINES
+      })
+
+      la(r.pullRequestId === url, r)
+      la(r.htmlUrl === url, r)
+      la(r.pullRequestNumber === '3', r)
     })
 
     it('github-actions returns undefined when not a GHA run', () => {
