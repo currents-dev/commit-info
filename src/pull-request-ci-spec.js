@@ -183,13 +183,17 @@ describe('pull-request-ci', () => {
           title: 'UI title',
           createdBy: {
             imageUrl: 'https://img',
-            url: 'https://profile'
+            id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
           }
         })
       return enrichAzurePullRequestCi(ci, env, { fetchJson }).then(out => {
         la(out.prTitle === 'UI title', out)
         la(out.senderAvatarUrl === 'https://img', out)
-        la(out.senderHtmlUrl === 'https://profile', out)
+        la(
+          out.senderHtmlUrl ===
+            'https://fab.visualstudio.com/_usersSettings/about?userId=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+          out
+        )
       })
     })
 

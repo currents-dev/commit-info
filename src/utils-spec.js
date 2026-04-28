@@ -153,7 +153,7 @@ describe('utils', () => {
         SYSTEM_PULLREQUEST_TARGETBRANCH: 'refs/heads/main',
         BUILD_SOURCEBRANCH: 'refs/pull/123/merge',
         SYSTEM_PULLREQUEST_SOURCECOMMITID: 'deadbeef',
-        SYSTEM_PULLREQUEST_TARGETCOMMITID: 'cafebabe',
+        SYSTEM_PULLREQUEST_TARGETCOMMITID: 'cafebabe', // undocumented — ignored
         SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: 'https://dev.azure.com/org/',
         SYSTEM_TEAMPROJECT: 'My Project',
         BUILD_REPOSITORY_NAME: 'my-repo',
@@ -172,7 +172,7 @@ describe('utils', () => {
       la(eventData.headRef === 'refs/heads/feature-name', eventData)
       la(eventData.baseRef === 'refs/heads/main', eventData)
       la(eventData.headSha === 'deadbeef', eventData)
-      la(eventData.baseSha === 'cafebabe', eventData)
+      la(eventData.baseSha === null, eventData)
       la(eventData.prTitle === 'Fix the thing', eventData)
       la(
         eventData.htmlUrl ===

@@ -69,6 +69,12 @@ function getGhaEventData (eventFilePath, isGha) {
 /**
  * Pull request metadata from Azure Pipelines when the job is PR-triggered.
  * Uses predefined variables as env vars (dots → underscores, uppercase).
+ *
+ * **`baseSha` is always `null`.** Azure Pipelines does not document any predefined
+ * variable for the PR base-commit SHA; `commitInfo()` loads it from the Git REST
+ * API (`lastMergeTargetCommit`) via `enrichAzurePullRequestCi` when a token is
+ * available (`SYSTEM_ACCESSTOKEN` plus `BUILD_REPOSITORY_ID`).
+ *
  * @param {NodeJS.ProcessEnv} [env=process.env]
  * @returns {object | undefined} PR fields; Azure: pullRequestId is htmlUrl or null (never a numeric fallback)
  */

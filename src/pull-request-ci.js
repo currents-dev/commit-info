@@ -123,12 +123,11 @@ function readAzurePipelinesPullRequest (env) {
     const baseRef = env.SYSTEM_PULLREQUEST_TARGETBRANCH || null
     const headSha =
       env.SYSTEM_PULLREQUEST_SOURCECOMMITID || env.BUILD_SOURCEVERSION || null
-    // SYSTEM_PULLREQUEST_TARGETCOMMITID is not in the official Azure Pipelines
-    // predefined-variables list, so on most agents it is unset and baseSha is
-    // null here. The documented source for the target commit SHA is the Git PR
-    // REST API (lastMergeTargetCommit.commitId), which enrichAzurePullRequestCi
-    // populates when SYSTEM_ACCESSTOKEN and repository identifiers are available.
-    const baseSha = env.SYSTEM_PULLREQUEST_TARGETCOMMITID || null
+    // Azure Pipelines exposes no predefined variable for the PR base (merge
+    // target) commit SHA. Env-only callers get null; commitInfo() calls
+    // enrichAzurePullRequestCi(), which fills baseSha from the Git REST API
+    // (lastMergeTargetCommit.commitId) when SYSTEM_ACCESSTOKEN and repo id exist.
+    const baseSha = null
     const buildSourceBranch = env.BUILD_SOURCEBRANCH || null
 
     let htmlUrl = null
@@ -308,7 +307,11 @@ function enrichAzurePullRequestCi (ci, env, options = {}) {
           baseSha: lastMergeTargetCommit.commitId || ci.baseSha,
           headSha: ci.headSha || lastMergeSourceCommit.commitId || null,
           senderAvatarUrl: createdBy.imageUrl || ci.senderAvatarUrl,
-          senderHtmlUrl: createdBy.url || ci.senderHtmlUrl
+          senderHtmlUrl:
+            adoSenderHtmlUrl(
+              env.SYSTEM_TEAMFOUNDATIONCOLLECTIONURI,
+              createdBy.id
+            ) || ci.senderHtmlUrl
         }
       } catch (e) {
         debug('ADO PR REST enrich parse error: %s', e.message)
