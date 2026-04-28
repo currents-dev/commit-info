@@ -35,5 +35,6 @@ steps:
   - script: npm test
     displayName: Unit tests
 
+  # Optional: SYSTEM_ACCESSTOKEN: $(System.AccessToken) enriches prTitle via REST when allowed.
   - script: npm run ado-pr-verify
     displayName: Verify Azure PR → commit-info adoEventData

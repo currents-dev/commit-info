@@ -1,5 +1,8 @@
 'use strict'
 
+const http = require('http')
+const https = require('https')
+
 const debug = require('debug')('commit-info')
 
 const PROVIDER_GITHUB_ACTIONS = 'github-actions'
@@ -23,6 +26,11 @@ function adoPrTitleFromEnv (env) {
   }
   const msg = env.BUILD_SOURCEVERSIONMESSAGE
   if (!msg) {
+    return null
+  }
+  const trimmed = msg.trim()
+  // Git default merge message on PR refs — not the PR title in Azure DevOps UI.
+  if (/^Merge pull request \d+ from .+ into .+$/i.test(trimmed)) {
     return null
   }
   const merged = msg.match(/^Merged PR \d+: ?(.*)$/)
@@ -178,6 +186,120 @@ function resolvePullRequestCi ({
   }
 }
 
+function adoAccessTokenFromEnv (env) {
+  return (
+    env.SYSTEM_ACCESSTOKEN ||
+    env.SYSTEM_ACCESS_TOKEN ||
+    env.ENDPOINT_AUTH_PARAMETER_SYSTEMVSSCONNECTION_ACCESSTOKEN ||
+    null
+  )
+}
+
+function adoGetPullRequestApiUrl (env) {
+  const collectionUri = env.SYSTEM_TEAMFOUNDATIONCOLLECTIONURI
+  const teamProject = env.SYSTEM_TEAMPROJECT
+  const repositoryId = env.BUILD_REPOSITORY_ID
+  const pullRequestId = env.SYSTEM_PULLREQUEST_PULLREQUESTID
+  if (!collectionUri || !teamProject || !repositoryId || !pullRequestId) {
+    return null
+  }
+  const root = collectionUri.replace(/\/$/, '')
+  return `${root}/${encodeURIComponent(
+    teamProject
+  )}/_apis/git/repositories/${encodeURIComponent(
+    repositoryId
+  )}/pullRequests/${encodeURIComponent(pullRequestId)}?api-version=7.0`
+}
+
+function httpGetJson (href, token) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(href)
+    const lib = u.protocol === 'https:' ? https : http
+    const defaultPort = u.protocol === 'https:' ? 443 : 80
+    const port = u.port ? parseInt(u.port, 10) : defaultPort
+    const opts = {
+      hostname: u.hostname,
+      port,
+      path: u.pathname + u.search,
+      method: 'GET',
+      headers: {
+        Authorization: 'Bearer ' + token,
+        Accept: 'application/json'
+      }
+    }
+    const req = lib.request(opts, res => {
+      let body = ''
+      res.setEncoding('utf8')
+      res.on('data', chunk => {
+        body += chunk
+      })
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          try {
+            resolve(JSON.parse(body))
+          } catch (err) {
+            reject(err)
+          }
+        } else {
+          reject(
+            new Error('HTTP ' + res.statusCode + ': ' + body.slice(0, 240))
+          )
+        }
+      })
+    })
+    req.on('error', reject)
+    req.end()
+  })
+}
+
+/**
+ * Optional: richer prTitle / createdBy from Git REST when token + repo id exist.
+ * Never throws; on any failure returns the original ci unchanged.
+ * @param {object | undefined} ci
+ * @param {NodeJS.ProcessEnv} env
+ * @param {{ fetchJson?: (href: string, token: string) => Promise<object> }} [options]
+ */
+function enrichAzurePullRequestCi (ci, env, options = {}) {
+  if (!ci || ci.provider !== PROVIDER_AZURE_PIPELINES) {
+    return Promise.resolve(ci)
+  }
+  let token
+  let href
+  try {
+    token = adoAccessTokenFromEnv(env)
+    href = adoGetPullRequestApiUrl(env)
+  } catch (e) {
+    debug('ADO PR REST enrich skipped: %s', e.message)
+    return Promise.resolve(ci)
+  }
+  const fetchJson = options.fetchJson || httpGetJson
+  if (!token || !href) {
+    return Promise.resolve(ci)
+  }
+  return fetchJson(href, token)
+    .then(data => {
+      try {
+        const createdBy = data && data.createdBy ? data.createdBy : {}
+        return {
+          ...ci,
+          prTitle:
+            data && data.title != null && String(data.title) !== ''
+              ? data.title
+              : ci.prTitle,
+          senderAvatarUrl: createdBy.imageUrl || ci.senderAvatarUrl,
+          senderHtmlUrl: createdBy.url || ci.senderHtmlUrl
+        }
+      } catch (e) {
+        debug('ADO PR REST enrich parse error: %s', e.message)
+        return ci
+      }
+    })
+    .catch(err => {
+      debug('ADO PR REST enrich failed: %s', err.message)
+      return ci
+    })
+}
+
 module.exports = {
   PROVIDER_GITHUB_ACTIONS,
   PROVIDER_AZURE_PIPELINES,
@@ -185,6 +307,8 @@ module.exports = {
   adoPrTitleFromEnv,
   adoSenderHtmlUrl,
   adoSenderAvatarUrl,
+  adoGetPullRequestApiUrl,
+  enrichAzurePullRequestCi,
   readGithubActionsPullRequest,
   readAzurePipelinesPullRequest,
   resolvePullRequestCi

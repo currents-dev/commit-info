@@ -9,7 +9,9 @@ const {
   PROVIDER_GITHUB_ACTIONS,
   PROVIDER_AZURE_PIPELINES,
   readGithubActionsPullRequest,
-  adoPrTitleFromEnv
+  adoPrTitleFromEnv,
+  adoGetPullRequestApiUrl,
+  enrichAzurePullRequestCi
 } = require('./pull-request-ci')
 
 describe('pull-request-ci', () => {
@@ -135,6 +137,86 @@ describe('pull-request-ci', () => {
     })
   })
 
+  describe('adoGetPullRequestApiUrl', () => {
+    it('builds REST URL when required env is set', () => {
+      const u = adoGetPullRequestApiUrl({
+        SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: 'https://fab.visualstudio.com/',
+        SYSTEM_TEAMPROJECT: 'My Proj',
+        BUILD_REPOSITORY_ID: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        SYSTEM_PULLREQUEST_PULLREQUESTID: '7'
+      })
+      la(
+        u ===
+          'https://fab.visualstudio.com/My%20Proj/_apis/git/repositories/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/pullRequests/7?api-version=7.0',
+        u
+      )
+    })
+
+    it('returns null when repository id is missing', () => {
+      la(
+        adoGetPullRequestApiUrl({
+          SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: 'https://x/',
+          SYSTEM_TEAMPROJECT: 'P',
+          SYSTEM_PULLREQUEST_PULLREQUESTID: '1'
+        }) == null
+      )
+    })
+  })
+
+  describe('enrichAzurePullRequestCi', () => {
+    it('merges title and author from REST response', () => {
+      const ci = {
+        provider: PROVIDER_AZURE_PIPELINES,
+        prTitle: 'from env',
+        senderAvatarUrl: null,
+        senderHtmlUrl: null
+      }
+      const env = {
+        SYSTEM_ACCESSTOKEN: 't',
+        SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: 'https://fab.visualstudio.com/',
+        SYSTEM_TEAMPROJECT: 'P',
+        BUILD_REPOSITORY_ID: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        SYSTEM_PULLREQUEST_PULLREQUESTID: '1'
+      }
+      const fetchJson = () =>
+        Promise.resolve({
+          title: 'UI title',
+          createdBy: {
+            imageUrl: 'https://img',
+            url: 'https://profile'
+          }
+        })
+      return enrichAzurePullRequestCi(ci, env, { fetchJson }).then(out => {
+        la(out.prTitle === 'UI title', out)
+        la(out.senderAvatarUrl === 'https://img', out)
+        la(out.senderHtmlUrl === 'https://profile', out)
+      })
+    })
+
+    it('returns same ci when token is missing', () => {
+      const ci = { provider: PROVIDER_AZURE_PIPELINES, prTitle: 'x' }
+      return enrichAzurePullRequestCi(ci, {}, {}).then(out => {
+        la(out === ci, out)
+      })
+    })
+
+    it('returns same ci when REST fails', () => {
+      const ci = { provider: PROVIDER_AZURE_PIPELINES, prTitle: 'keep' }
+      const env = {
+        SYSTEM_ACCESSTOKEN: 't',
+        SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: 'https://fab.visualstudio.com/',
+        SYSTEM_TEAMPROJECT: 'P',
+        BUILD_REPOSITORY_ID: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        SYSTEM_PULLREQUEST_PULLREQUESTID: '1'
+      }
+      const fetchJson = () => Promise.reject(new Error('401'))
+      return enrichAzurePullRequestCi(ci, env, { fetchJson }).then(out => {
+        la(out.prTitle === 'keep', out)
+        la(out === ci, out)
+      })
+    })
+  })
+
   describe('adoPrTitleFromEnv', () => {
     it('prefers SYSTEM_PULLREQUEST_TITLE', () => {
       la(
@@ -157,6 +239,15 @@ describe('pull-request-ci', () => {
       la(
         adoPrTitleFromEnv({ BUILD_SOURCEVERSIONMESSAGE: 'plain subject' }) ===
           'plain subject'
+      )
+    })
+
+    it('returns null for Git default merge pull request subject', () => {
+      la(
+        adoPrTitleFromEnv({
+          BUILD_SOURCEVERSIONMESSAGE:
+            'Merge pull request 1 from feat/detect-azure-ci into master'
+        }) == null
       )
     })
   })

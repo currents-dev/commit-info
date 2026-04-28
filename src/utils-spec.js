@@ -205,6 +205,20 @@ describe('utils', () => {
       la(eventData.prTitle === 'feat: hello from ado', eventData)
     })
 
+    it('prTitle null when only Git merge-pull-request subject is available', () => {
+      const eventData = getAdoPrEventData({
+        BUILD_REASON: 'PullRequest',
+        SYSTEM_PULLREQUEST_PULLREQUESTID: '1',
+        SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: 'https://dev.azure.com/org/',
+        SYSTEM_TEAMPROJECT: 'P',
+        BUILD_REPOSITORY_NAME: 'r',
+        BUILD_SOURCEVERSIONMESSAGE:
+          'Merge pull request 1 from feat/x into master'
+      })
+
+      la(eventData.prTitle == null, eventData)
+    })
+
     it('falls back headSha to BUILD_SOURCEVERSION', () => {
       const eventData = getAdoPrEventData({
         BUILD_REASON: 'PullRequest',

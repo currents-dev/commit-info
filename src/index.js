@@ -14,6 +14,7 @@ const {
 const { getBranch, getCommitInfoFromEnvironment } = require('./utils')
 const {
   resolvePullRequestCi,
+  enrichAzurePullRequestCi,
   PROVIDER_GITHUB_ACTIONS,
   PROVIDER_AZURE_PIPELINES,
   withoutProvider
@@ -39,20 +40,35 @@ function commitInfo (folder, options = {}) {
     sha: getSha(folder),
     timestamp: getTimestamp(folder),
     remote: getRemoteOrigin(folder),
-    pullRequestCi,
-    ghaEventData:
-      pullRequestCi && pullRequestCi.provider === PROVIDER_GITHUB_ACTIONS
-        ? withoutProvider(pullRequestCi)
-        : undefined,
-    adoEventData:
-      pullRequestCi && pullRequestCi.provider === PROVIDER_AZURE_PIPELINES
-        ? withoutProvider(pullRequestCi)
-        : undefined
+    pullRequestCi
   }).then(info => {
-    const envVariables = getCommitInfoFromEnvironment()
-    debug('git commit: %o', info)
-    debug('env commit: %o', envVariables)
-    return mergeWith(or, envVariables, info)
+    const finish = prCi => {
+      const next = {
+        ...info,
+        pullRequestCi: prCi,
+        ghaEventData:
+          prCi && prCi.provider === PROVIDER_GITHUB_ACTIONS
+            ? withoutProvider(prCi)
+            : undefined,
+        adoEventData:
+          prCi && prCi.provider === PROVIDER_AZURE_PIPELINES
+            ? withoutProvider(prCi)
+            : undefined
+      }
+      const envVariables = getCommitInfoFromEnvironment()
+      debug('git commit: %o', next)
+      debug('env commit: %o', envVariables)
+      return mergeWith(or, envVariables, next)
+    }
+    if (
+      info.pullRequestCi &&
+      info.pullRequestCi.provider === PROVIDER_AZURE_PIPELINES
+    ) {
+      return enrichAzurePullRequestCi(info.pullRequestCi, process.env).then(
+        finish
+      )
+    }
+    return finish(info.pullRequestCi)
   })
 }
 
