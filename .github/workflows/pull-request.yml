@@ -32,6 +32,9 @@ jobs:
         if: ${{ !matrix.container }}
         with:
           node-version: 16
+      # the checkout belongs to another user than the container's root
+      - if: ${{ matrix.container }}
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - run: git --version && node --version
       - run: npm ci --ignore-scripts
       - run: node .github/scripts/check-pull-request-commit.js
