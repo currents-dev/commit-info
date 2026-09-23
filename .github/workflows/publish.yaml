@@ -13,12 +13,47 @@ on:
           - latest
 
 permissions:
-  id-token: write # Required for OIDC
   contents: read
 
 jobs:
-  publish:
+  test:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+
+      - name: Check version format
+        env:
+          CHANNEL: ${{ github.event.inputs.channel }}
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          # first prerelease identifier: 1.1.0-beta.0 -> beta, 1.1.0 -> empty
+          PRERELEASE=$(node -p "const v = require('./package.json').version.split('+')[0]; const i = v.indexOf('-'); i < 0 ? '' : v.slice(i + 1).split('.')[0]")
+          if [[ "$CHANNEL" == "latest" && -n "$PRERELEASE" ]]; then
+            echo "Error: $PACKAGE_VERSION is a prerelease and cannot be published to latest."
+            exit 1
+          fi
+          if [[ "$CHANNEL" != "latest" && "$PRERELEASE" != "$CHANNEL" ]]; then
+            echo "Error: Package version ($PACKAGE_VERSION) must be a -$CHANNEL.N prerelease for the selected channel."
+            exit 1
+          fi
+          echo "Version check passed: $PACKAGE_VERSION is valid for channel $CHANNEL"
+
+      # pre-git would install git hooks in the checkout
+      - run: npm ci --ignore-scripts
+      - run: npm run unit
+
+  # Only this job can request the OIDC token npm trusted publishing uses, and
+  # it runs no dependency code: the package has no build step.
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -27,27 +62,9 @@ jobs:
           node-version: '24.x'
           registry-url: 'https://registry.npmjs.org'
 
-      # pre-git would install git hooks in the checkout
-      - run: npm ci --ignore-scripts
-
-      - name: Check version format
-        env:
-          CHANNEL: ${{ github.event.inputs.channel }}
-        run: |
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
-          if [[ "$CHANNEL" == "alpha" || "$CHANNEL" == "beta" ]]; then
-            if [[ "$PACKAGE_VERSION" != *"-$CHANNEL"* ]]; then
-              echo "Error: Package version ($PACKAGE_VERSION) does not include the required -$CHANNEL suffix for the selected channel."
-              exit 1
-            fi
-          fi
-          echo "Version check passed: $PACKAGE_VERSION is valid for channel $CHANNEL"
-
-      - run: npm run unit
-
       - name: Publish to NPM
         env:
           CHANNEL: ${{ github.event.inputs.channel }}
         run: |
-          npm pack --dry-run
-          npm publish --tag "$CHANNEL"
+          npm pack --dry-run --ignore-scripts
+          npm publish --ignore-scripts --tag "$CHANNEL"
