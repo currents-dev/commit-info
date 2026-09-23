@@ -36,11 +36,12 @@ async function getPullRequestHeadCommit (folder, checkoutSha, ghaEventData) {
       return null
     }
 
-    // Skips pull_request_target, where the checkout is the target branch, and
-    // any build where the variable does not describe the checked-out commit.
+    // Skips pull_request_target, where the checkout is the target branch, a
+    // commit the build added on top of the pull request, and any build where
+    // the variable does not describe the checked-out commit.
     const parents = await getParents(folder, checkoutSha)
-    if (!parents.includes(headSha)) {
-      debug('%s is not a parent of %s, skipping', headSha, checkoutSha)
+    if (parents.length < 2 || !parents.includes(headSha)) {
+      debug('%s is not a merge with parent %s, skipping', checkoutSha, headSha)
       return null
     }
 

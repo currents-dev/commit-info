@@ -51,7 +51,7 @@ When the checked-out commit is such a merge, `commitInfo` reports the pull reque
 - Buildkite: `BUILDKITE_PULL_REQUEST_HEAD_COMMIT`
 - Bitbucket Pipelines: `BITBUCKET_COMMIT`
 
-The commit is used only when it is a parent of the checked-out commit. If a shallow clone does not contain it (for example `actions/checkout` with the default `fetch-depth: 1`), it is fetched with `git fetch --depth=1 origin <sha>`, with a 3 second timeout. If the fetch fails, the checked-out commit is reported. Set `CURRENTS_DISABLE_HEAD_COMMIT_FETCH=true` to skip the fetch.
+The commit is used only when the checked-out commit is a merge and the commit is one of its parents. If a shallow clone does not contain it (for example `actions/checkout` with the default `fetch-depth: 1`), it is fetched with `git fetch --depth=1 origin <sha>`, with a 3 second timeout. If the fetch fails, the checked-out commit is reported. Set `CURRENTS_DISABLE_HEAD_COMMIT_FETCH=true` to skip the fetch.
 
 The `COMMIT_INFO_*` variables below still take priority. When `COMMIT_INFO_SHA` is set, the pull request's commit is not looked up.
 

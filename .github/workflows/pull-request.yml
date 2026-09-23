@@ -1,6 +1,10 @@
 name: Pull request commit
 on: pull_request
 
+# the job runs code from the pull request
+permissions:
+  contents: read
+
 jobs:
   commit-info:
     name: commitInfo (${{ matrix.name }})

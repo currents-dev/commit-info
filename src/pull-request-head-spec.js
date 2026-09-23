@@ -40,6 +40,7 @@ const git = (cwd, ...args) =>
  * - refs/pull/1/merge, made by GitHub: parent 1 is main, parent 2 the pull request
  * - refs/heads/local-merge, made by Bitbucket Pipelines or Jenkins: parent 1
  *   is the pull request, parent 2 main
+ * and refs/heads/on-top, a one-parent commit a build added on the pull request
  */
 function createOrigin (root) {
   const origin = path.join(root, 'origin')
@@ -76,7 +77,14 @@ function createOrigin (root) {
   )
   git(origin, 'update-ref', 'refs/heads/local-merge', localMergeSha)
 
-  return { origin, headSha, baseSha, mergeSha, localMergeSha }
+  const onTopSha = git(
+    origin,
+    ...['commit-tree', `${headSha}^{tree}`, '-p', headSha],
+    ...['-m', 'ci: format']
+  )
+  git(origin, 'update-ref', 'refs/heads/on-top', onTopSha)
+
+  return { origin, headSha, baseSha, mergeSha, localMergeSha, onTopSha }
 }
 
 const prCommit = sha => ({
@@ -190,6 +198,17 @@ describe('getPullRequestHeadCommit', function () {
     process.env.CI_MERGE_REQUEST_SOURCE_BRANCH_SHA = repo.headSha
 
     assert.strictEqual(await getPullRequestHeadCommit(work, repo.headSha), null)
+  })
+
+  it('returns null when the checkout is a one-parent commit on the pull request', async () => {
+    const work = checkout('refs/heads/on-top', 1)
+
+    assert.strictEqual(
+      await getPullRequestHeadCommit(work, repo.onTopSha, {
+        headSha: repo.headSha
+      }),
+      null
+    )
   })
 
   it('does not fetch when CURRENTS_DISABLE_HEAD_COMMIT_FETCH is set', async () => {
