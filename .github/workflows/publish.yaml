@@ -1,0 +1,53 @@
+name: Publish NPM Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        required: true
+        type: choice
+        description: NPM tag to publish the package to
+        options:
+          - alpha
+          - beta
+          - latest
+
+permissions:
+  id-token: write # Required for OIDC
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      # pre-git would install git hooks in the checkout
+      - run: npm ci --ignore-scripts
+
+      - name: Check version format
+        env:
+          CHANNEL: ${{ github.event.inputs.channel }}
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          if [[ "$CHANNEL" == "alpha" || "$CHANNEL" == "beta" ]]; then
+            if [[ "$PACKAGE_VERSION" != *"-$CHANNEL"* ]]; then
+              echo "Error: Package version ($PACKAGE_VERSION) does not include the required -$CHANNEL suffix for the selected channel."
+              exit 1
+            fi
+          fi
+          echo "Version check passed: $PACKAGE_VERSION is valid for channel $CHANNEL"
+
+      - run: npm run unit
+
+      - name: Publish to NPM
+        env:
+          CHANNEL: ${{ github.event.inputs.channel }}
+        run: |
+          npm pack --dry-run
+          npm publish --tag "$CHANNEL"
