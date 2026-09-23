@@ -5,7 +5,7 @@ Collects Git commit info from git CLI
 
 ## Install
 
-Requires [Node](https://nodejs.org/en/) version 6 or above.
+Requires [Node](https://nodejs.org/en/) version 8 or above.
 
 ```sh
 npm install --save @currents-dev/commit-info
@@ -36,6 +36,24 @@ Notes:
 - Only uses Git commands, see [src/git-api.js](src/git-api.js)
 - If a command fails, returns `null` for each property
 - If you need to debug, run with `DEBUG=commit-info` environment variable.
+
+## Pull request builds
+
+On pull request builds many CI providers check out a commit that merges the pull request into its target branch. GitHub Actions, for example, checks out `refs/pull/<number>/merge`, whose message is `Merge <sha> into <sha>`.
+
+When the checked-out commit is such a merge, `commitInfo` reports the pull request's last commit instead: its `sha`, `message`, `email`, `author` and `timestamp`. It finds that commit in:
+
+- GitHub Actions: `pull_request.head.sha` in the event file (`GITHUB_EVENT_PATH`)
+- GitLab merged results pipelines: `CI_MERGE_REQUEST_SOURCE_BRANCH_SHA`
+- Azure Pipelines: `SYSTEM_PULLREQUEST_SOURCECOMMITID`
+- Travis CI: `TRAVIS_PULL_REQUEST_SHA`
+- Semaphore: `SEMAPHORE_GIT_PR_SHA`
+- Buildkite: `BUILDKITE_PULL_REQUEST_HEAD_COMMIT`
+- Bitbucket Pipelines: `BITBUCKET_COMMIT`
+
+The commit is used only when the checked-out commit is a merge and the commit is one of its parents. If a shallow clone does not contain it (for example `actions/checkout` with the default `fetch-depth: 1`), it is fetched with `git fetch --depth=1 origin <sha>`, with a 3 second timeout. If the fetch fails, the checked-out commit is reported. Set `CURRENTS_DISABLE_HEAD_COMMIT_FETCH=true` to skip the fetch.
+
+The `COMMIT_INFO_*` variables below still take priority. When `COMMIT_INFO_SHA` is set, the pull request's commit is not looked up.
 
 ## Fallback environment variables
 
