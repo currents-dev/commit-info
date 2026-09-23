@@ -4,6 +4,7 @@
 const assert = require('assert')
 const { execFileSync } = require('child_process')
 const fs = require('fs')
+const net = require('net')
 const os = require('os')
 const path = require('path')
 const mockedEnv = require('mocked-env')
@@ -223,6 +224,42 @@ describe('getPullRequestHeadCommit', function () {
       }),
       null
     )
+  })
+
+  it('gives up after 3 seconds when origin does not answer', async () => {
+    const sockets = []
+    const server = net.createServer(socket => sockets.push(socket))
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
+    try {
+      const work = checkout('refs/pull/1/merge', 1)
+      const { port } = server.address()
+      git(work, 'remote', 'set-url', 'origin', `git://127.0.0.1:${port}/repo`)
+
+      const started = Date.now()
+      const head = await getPullRequestHeadCommit(work, repo.mergeSha, {
+        headSha: repo.headSha
+      })
+      const elapsed = Date.now() - started
+
+      assert.strictEqual(head, null)
+      // one attempt: a timed-out fetch is not retried
+      assert.ok(elapsed >= 2900 && elapsed < 5000, `took ${elapsed}ms`)
+    } finally {
+      sockets.forEach(socket => socket.destroy())
+      server.close()
+    }
+  })
+
+  it('returns the pull request commit to processes fetching at the same time', async () => {
+    const work = checkout('refs/pull/1/merge', 1)
+
+    const heads = await Promise.all(
+      [1, 2, 3].map(() =>
+        getPullRequestHeadCommit(work, repo.mergeSha, { headSha: repo.headSha })
+      )
+    )
+
+    heads.forEach(head => assert.deepStrictEqual(head, prCommit(repo.headSha)))
   })
 
   describe('commitInfo', () => {

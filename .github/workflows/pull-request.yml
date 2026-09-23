@@ -1,0 +1,41 @@
+name: Pull request commit
+on: pull_request
+
+jobs:
+  commit-info:
+    name: commitInfo (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: default checkout
+            fetch-depth: 1
+            expected: head
+          - name: full clone
+            fetch-depth: 0
+            expected: head
+          - name: git 2.25
+            fetch-depth: 1
+            expected: head
+            container: mcr.microsoft.com/playwright:v1.28.1-focal
+          - name: fetch disabled
+            fetch-depth: 1
+            expected: checkout
+            disable-fetch: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ matrix.fetch-depth }}
+      - uses: actions/setup-node@v4
+        if: ${{ !matrix.container }}
+        with:
+          node-version: 16
+      - run: git --version && node --version
+      - run: npm ci --ignore-scripts
+      - run: node .github/scripts/check-pull-request-commit.js
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EXPECTED_COMMIT: ${{ matrix.expected }}
+          CURRENTS_DISABLE_HEAD_COMMIT_FETCH: ${{ matrix.disable-fetch }}
