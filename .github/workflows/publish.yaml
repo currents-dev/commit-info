@@ -1,0 +1,70 @@
+name: Publish NPM Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        required: true
+        type: choice
+        description: NPM tag to publish the package to
+        options:
+          - alpha
+          - beta
+          - latest
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+
+      - name: Check version format
+        env:
+          CHANNEL: ${{ github.event.inputs.channel }}
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          # latest: 1.1.0, alpha and beta: 1.1.0-beta.0
+          if [[ "$CHANNEL" == "latest" ]]; then
+            PATTERN='^[0-9]+\.[0-9]+\.[0-9]+$'
+          else
+            PATTERN="^[0-9]+\.[0-9]+\.[0-9]+-$CHANNEL\.[0-9]+$"
+          fi
+          if [[ ! "$PACKAGE_VERSION" =~ $PATTERN ]]; then
+            echo "Error: $PACKAGE_VERSION cannot be published to $CHANNEL. Expected a version like 1.1.0 for latest, or 1.1.0-$CHANNEL.0 for $CHANNEL."
+            exit 1
+          fi
+          echo "Version check passed: $PACKAGE_VERSION is valid for channel $CHANNEL"
+
+      # pre-git would install git hooks in the checkout
+      - run: npm ci --ignore-scripts
+      - run: npm run unit
+
+  # Only this job can request the OIDC token npm trusted publishing uses, and
+  # it runs no dependency code: the package has no build step.
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Publish to NPM
+        env:
+          CHANNEL: ${{ github.event.inputs.channel }}
+        run: |
+          npm pack --dry-run --ignore-scripts
+          npm publish --ignore-scripts --tag "$CHANNEL"
