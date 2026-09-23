@@ -30,14 +30,14 @@ jobs:
           CHANNEL: ${{ github.event.inputs.channel }}
         run: |
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
-          # first prerelease identifier: 1.1.0-beta.0 -> beta, 1.1.0 -> empty
-          PRERELEASE=$(node -p "const v = require('./package.json').version.split('+')[0]; const i = v.indexOf('-'); i < 0 ? '' : v.slice(i + 1).split('.')[0]")
-          if [[ "$CHANNEL" == "latest" && -n "$PRERELEASE" ]]; then
-            echo "Error: $PACKAGE_VERSION is a prerelease and cannot be published to latest."
-            exit 1
+          # latest: 1.1.0, alpha and beta: 1.1.0-beta.0
+          if [[ "$CHANNEL" == "latest" ]]; then
+            PATTERN='^[0-9]+\.[0-9]+\.[0-9]+$'
+          else
+            PATTERN="^[0-9]+\.[0-9]+\.[0-9]+-$CHANNEL\.[0-9]+$"
           fi
-          if [[ "$CHANNEL" != "latest" && "$PRERELEASE" != "$CHANNEL" ]]; then
-            echo "Error: Package version ($PACKAGE_VERSION) must be a -$CHANNEL.N prerelease for the selected channel."
+          if [[ ! "$PACKAGE_VERSION" =~ $PATTERN ]]; then
+            echo "Error: $PACKAGE_VERSION cannot be published to $CHANNEL. Expected a version like 1.1.0 for latest, or 1.1.0-$CHANNEL.0 for $CHANNEL."
             exit 1
           fi
           echo "Version check passed: $PACKAGE_VERSION is valid for channel $CHANNEL"
