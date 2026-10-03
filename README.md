@@ -37,6 +37,22 @@ Notes:
 - If a command fails, returns `null` for each property
 - If you need to debug, run with `DEBUG=commit-info` environment variable.
 
+## CI provider variables
+
+`getCiCommitInfo()` reads the commit from the variables of the CI provider the process runs on. The branch comes from:
+
+| Provider | Branch |
+| --- | --- |
+| GitHub Actions | `GH_BRANCH`, `GITHUB_HEAD_REF` (pull requests), `GITHUB_REF_NAME`, or `GITHUB_REF` without `refs/heads/` or `refs/tags/` |
+| GitLab | `CI_COMMIT_REF_NAME` |
+| CircleCI | `CIRCLE_BRANCH` |
+| Jenkins | `CHANGE_BRANCH` (multibranch pull requests), or `GIT_BRANCH` without `origin/`, `refs/remotes/origin/` or `refs/heads/` |
+| Azure Pipelines | `SYSTEM_PULLREQUEST_SOURCEBRANCH` without `refs/heads/` (pull requests), or `BUILD_SOURCEBRANCHNAME`, which is only the last segment: `x` for `feature/x` |
+| Bitbucket Pipelines | `BITBUCKET_BRANCH` |
+| Buildkite | `BUILDKITE_BRANCH` |
+
+AWS CodeBuild gives no branch. The other properties and providers are in [src/ci.js](src/ci.js).
+
 ## Pull request builds
 
 On pull request builds many CI providers check out a commit that merges the pull request into its target branch. GitHub Actions, for example, checks out `refs/pull/<number>/merge`, whose message is `Merge <sha> into <sha>`.
@@ -86,6 +102,11 @@ See [docker-example](docker-example) for a full example.
 
 In addition to `commitInfo` this module also exposes individual promise-returning
 methods `getBranch`, `getMessage`, `getEmail`, `getAuthor`, `getSha`, `getTimestamp`, `getRemoteOrigin`. These methods do NOT use fallback environment variables.
+
+Other exports:
+
+- `getCiCommitInfo(env = process.env)`: the CI provider's values and the provider name, see [CI provider variables](#ci-provider-variables). The `remote` has no credentials.
+- `detectCiProvider(env = process.env)`: the CI provider name, such as `githubActions`, or `null`.
 
 For example
 

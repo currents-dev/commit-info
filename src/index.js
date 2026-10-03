@@ -17,6 +17,7 @@ const {
   getGhaEventData
 } = require('./utils')
 const { getPullRequestHeadCommit } = require('./pull-request-head')
+const { getCiCommitInfo, detectCiProvider } = require('./ci')
 const Promise = require('bluebird')
 const { mergeWith, or } = require('ramda')
 
@@ -64,5 +65,7 @@ module.exports = {
   getRemoteOrigin,
   getSubject,
   getTimestamp,
-  getBody
+  getBody,
+  getCiCommitInfo,
+  detectCiProvider
 }

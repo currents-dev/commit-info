@@ -8,7 +8,9 @@ exports['commit-info no environment variables has certain api 1'] = [
   "getRemoteOrigin",
   "getSubject",
   "getTimestamp",
-  "getBody"
+  "getBody",
+  "getCiCommitInfo",
+  "detectCiProvider"
 ]
 
 exports['commit-info no environment variables returns information 1'] = {
@@ -41,7 +43,9 @@ exports['commit-info combination with environment variables has certain api 1'] 
   "getRemoteOrigin",
   "getSubject",
   "getTimestamp",
-  "getBody"
+  "getBody",
+  "getCiCommitInfo",
+  "detectCiProvider"
 ]
 
 exports['commit-info combination with environment variables returns information 1'] = {
