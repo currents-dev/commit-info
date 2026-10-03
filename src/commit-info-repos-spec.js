@@ -10,8 +10,8 @@ const path = require('path')
 const TOKEN = 'glcbt-64_SECRET_TOKEN'
 const GITLAB_REMOTE = `https://gitlab-ci-token:${TOKEN}@gitlab.com/org/repo.git`
 
-// An empty HOME for commitInfo, because a global git config can mark every
-// repository as safe, as the GitHub Actions runner does
+// No global or system git config, because those can mark every repository
+// as safe, as the GitHub Actions runner does
 let home
 
 const git = (cwd, ...args) =>
@@ -37,7 +37,10 @@ function runCommitInfo (cwd, env) {
   const child = spawnSync(process.execPath, ['-e', script], {
     cwd,
     encoding: 'utf8',
-    env: Object.assign({ PATH: process.env.PATH, HOME: home }, env)
+    env: Object.assign(
+      { PATH: process.env.PATH, HOME: home, GIT_CONFIG_NOSYSTEM: '1' },
+      env
+    )
   })
   assert.strictEqual(child.status, 0, child.stderr)
   const lines = child.stdout.trim().split('\n')

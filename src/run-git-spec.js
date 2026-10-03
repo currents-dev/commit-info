@@ -90,14 +90,15 @@ describe('execGit', function () {
 
   let root, home, restoreEnvironment
 
-  // An empty HOME, because a global git config can mark every repository as
-  // safe, as the GitHub Actions runner does
+  // No global or system git config, because those can mark every repository
+  // as safe, as the GitHub Actions runner does
   const env = extra =>
     mockedEnv(
       Object.assign(
         {
           PATH: process.env.PATH,
           HOME: home,
+          GIT_CONFIG_NOSYSTEM: '1',
           GIT_TEST_ASSUME_DIFFERENT_OWNER: '1'
         },
         extra
