@@ -36,6 +36,8 @@ Each property comes from the first of these that has a value, or is `null`:
 2. git, see [src/git-api.js](src/git-api.js)
 3. the CI provider's environment variables, see [CI provider variables](#ci-provider-variables)
 
+The `remote` is the exception: the CI provider's value comes before git. `COMMIT_INFO_REMOTE` still comes first. On Azure Pipelines, for example, the clone often has an SSH remote, and `BUILD_REPOSITORY_URI` has the HTTPS URL. The CI providers that set a remote are AWS CodeBuild, Azure Pipelines, Bamboo, Buildkite, CircleCI, Drone, GitLab, Semaphore and Netlify, see [src/ci.js](src/ci.js).
+
 Notes:
 
 - git reports no branch for a detached checkout (`HEAD`), so the branch comes from the CI provider. Branch values from `COMMIT_INFO_BRANCH` and the CI provider are reported as they are.
@@ -47,7 +49,7 @@ Notes:
 
 ## CI provider variables
 
-When git does not return a value, it comes from the variables of the CI provider the process runs on. The branch comes from:
+When git does not return a value, it comes from the variables of the CI provider the process runs on. The remote comes from these variables first. The branch comes from:
 
 | Provider | Branch |
 | --- | --- |

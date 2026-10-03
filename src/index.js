@@ -70,6 +70,10 @@ function readGit (folder) {
  * 1. the COMMIT_INFO_* variable
  * 2. git
  * 3. the CI provider's variables
+ *
+ * For the remote the CI provider's value wins over git, as in the Currents
+ * Playwright reporter: an Azure Pipelines clone often has an SSH remote, and
+ * the pull request link needs the HTTPS URL in BUILD_REPOSITORY_URI.
  */
 function combineCommitInfo (fromEnvironment, fromGit, fromCi) {
   const combined = {}
@@ -77,6 +81,8 @@ function combineCommitInfo (fromEnvironment, fromGit, fromCi) {
     combined[field] =
       fromEnvironment[field] || fromGit[field] || fromCi[field] || null
   })
+  combined.remote =
+    fromEnvironment.remote || fromCi.remote || fromGit.remote || null
   return combined
 }
 
@@ -118,7 +124,8 @@ function warnAboutMissingFields (folder, gitError, info) {
 /**
  * Resolves with the commit the folder has checked out. The COMMIT_INFO_*
  * variables take priority over git; the CI provider's variables fill the
- * fields git could not read. The remote has no credentials.
+ * fields git could not read, and take priority over git for the remote. The
+ * remote has no credentials.
  *
  * @param {string} [folder] defaults to the current working directory
  */

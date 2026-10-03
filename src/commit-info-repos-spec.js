@@ -123,6 +123,38 @@ describe('commitInfo in real repositories', function () {
     assert.strictEqual(info.branch, 'refs/heads/from-env')
   })
 
+  describe('remote', () => {
+    const azureEnv = {
+      TF_BUILD: 'True',
+      AZURE_HTTP_USER_AGENT: 'agent',
+      BUILD_REPOSITORY_URI: 'https://org@dev.azure.com/org/p/_git/repo'
+    }
+
+    it('comes from the CI provider before git', () => {
+      const { info } = runCommitInfo(repo, azureEnv)
+      assert.strictEqual(info.remote, 'https://dev.azure.com/org/p/_git/repo')
+    })
+
+    it('comes from git when the CI provider has no remote', () => {
+      const { info } = runCommitInfo(repo, {
+        GITHUB_ACTIONS: 'true',
+        GITHUB_REF: 'refs/heads/main'
+      })
+      assert.strictEqual(info.remote, 'https://gitlab.com/org/repo.git')
+    })
+
+    it('comes from COMMIT_INFO_REMOTE before the CI provider', () => {
+      const { info } = runCommitInfo(
+        repo,
+        Object.assign(
+          { COMMIT_INFO_REMOTE: 'git@github.com:o/r.git' },
+          azureEnv
+        )
+      )
+      assert.strictEqual(info.remote, 'git@github.com:o/r.git')
+    })
+  })
+
   describe('credentials', () => {
     const gitlabEnv = {
       GITLAB_CI: 'true',
