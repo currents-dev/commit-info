@@ -8,13 +8,13 @@ Collects Git commit info from git CLI
 Requires [Node](https://nodejs.org/en/) version 8 or above.
 
 ```sh
-npm install --save @currents-dev/commit-info
+npm install --save @currents/commit-info
 ```
 
 ## Use
 
 ```js
-const {commitInfo} = require('@currents-dev/commit-info')
+const {commitInfo} = require('@currents/commit-info')
 // default folder is current working directory
 commitInfo(folder)
   .then(info => {
