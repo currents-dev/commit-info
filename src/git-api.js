@@ -1,8 +1,14 @@
-const execa = require('execa')
 const debug = require('debug')('commit-info')
 const la = require('lazy-ass')
 const is = require('check-more-types')
 const Promise = require('bluebird')
+const { removeCredentials } = require('./remove-credentials')
+const {
+  execGit,
+  isCi,
+  describeGitError,
+  SAFE_DIRECTORY_ARGS
+} = require('./run-git')
 
 // common git commands for getting basic info
 // https://git-scm.com/docs/git-show
@@ -18,34 +24,59 @@ const gitCommands = {
   remoteOriginUrl: 'git config --get remote.origin.url'
 }
 
-const prop = name => object => object[name]
 const returnNull = () => null
 const returnNullIfEmpty = value => value || null
+const keepValue = value => value
 
-const debugError = (gitCommand, folder, e) => {
-  debug('got an error running command "%s" in folder "%s"', gitCommand, folder)
-  debug(e)
-}
+// `git config --get` exits with 1 and prints nothing when the key is not set
+const isMissingValue = e =>
+  typeof e.code === 'number' && !String(e.stderr || '').trim()
 
-const runGitCommand = (gitCommand, pathToRepo) => {
+// The commands in gitCommands have no quoted arguments
+const toArgs = gitCommand => gitCommand.split(' ').slice(1)
+
+/**
+ * Runs a read-only git command and resolves with `{ value, error }`. `value`
+ * is the trimmed stdout or null; `error` is set when git failed for another
+ * reason than a missing value.
+ *
+ * @param {string} gitCommand one of gitCommands
+ * @param {string} [pathToRepo]
+ * @param {(stdout: string) => string} [transform] runs before stdout is
+ *   logged, so it can remove credentials
+ */
+const runGitCommandWithError = (gitCommand, pathToRepo, transform) => {
   la(is.unemptyString(gitCommand), 'missing git command', gitCommand)
   la(gitCommand.startsWith('git'), 'invalid git command', gitCommand)
 
   pathToRepo = pathToRepo || process.cwd()
   la(is.unemptyString(pathToRepo), 'missing repo path', pathToRepo)
+  transform = transform || keepValue
 
   debug('running git command: %s', gitCommand)
   debug('in folder %s', pathToRepo)
 
-  return Promise.try(() => execa.shell(gitCommand, { cwd: pathToRepo }))
-    .then(prop('stdout'))
+  return Promise.try(() =>
+    execGit(pathToRepo, toArgs(gitCommand), { readOnly: true })
+  )
+    .then(transform)
     .tap(stdout => debug('git stdout:', stdout))
-    .then(returnNullIfEmpty)
+    .then(stdout => ({ value: returnNullIfEmpty(stdout), error: null }))
     .catch(e => {
-      debugError(gitCommand, pathToRepo, e)
-      return returnNull()
+      debug(
+        'got an error running command "%s" in folder "%s": %s',
+        gitCommand,
+        pathToRepo,
+        describeGitError(e)
+      )
+      return { value: null, error: isMissingValue(e) ? null : e }
     })
 }
+
+const runGitCommand = (gitCommand, pathToRepo, transform) =>
+  runGitCommandWithError(gitCommand, pathToRepo, transform).then(
+    result => result.value
+  )
 
 /*
   "gift" module returns "" for detached checkouts
@@ -64,24 +95,59 @@ function getGitBranch (pathToRepo) {
     .catch(returnNull)
 }
 
-const getMessage = runGitCommand.bind(null, gitCommands.message)
+const bindCommand = gitCommand => pathToRepo =>
+  runGitCommand(gitCommand, pathToRepo)
 
-const getSubject = runGitCommand.bind(null, gitCommands.subject)
+const getMessage = bindCommand(gitCommands.message)
 
-const getBody = runGitCommand.bind(null, gitCommands.body)
+const getSubject = bindCommand(gitCommands.subject)
 
-const getEmail = runGitCommand.bind(null, gitCommands.email)
+const getBody = bindCommand(gitCommands.body)
 
-const getAuthor = runGitCommand.bind(null, gitCommands.author)
+const getEmail = bindCommand(gitCommands.email)
 
-const getSha = runGitCommand.bind(null, gitCommands.sha)
+const getAuthor = bindCommand(gitCommands.author)
 
-const getTimestamp = runGitCommand.bind(null, gitCommands.timestamp)
+const getSha = bindCommand(gitCommands.sha)
 
-const getRemoteOrigin = runGitCommand.bind(null, gitCommands.remoteOriginUrl)
+const getTimestamp = bindCommand(gitCommands.timestamp)
+
+// Reads the repository's config when another user owns the repository
+const remoteOriginUrlOfAnyOwner = gitCommands.remoteOriginUrl.replace(
+  /^git /,
+  `git ${SAFE_DIRECTORY_ARGS.join(' ')} `
+)
+
+/**
+ * Reads the remote URL without credentials: a remote can hold a token, as in
+ * https://user:<token>@host/o/r.git. Resolves with `{ value, error }`.
+ *
+ * In a repository owned by another user `git config` does not fail: it skips
+ * the repository's config and prints nothing. So on CI an empty result is read
+ * again with safe.directory=*.
+ */
+const readRemoteOrigin = pathToRepo =>
+  runGitCommandWithError(
+    gitCommands.remoteOriginUrl,
+    pathToRepo,
+    removeCredentials
+  ).then(result => {
+    if (result.value || result.error || !isCi()) {
+      return result
+    }
+    return runGitCommandWithError(
+      remoteOriginUrlOfAnyOwner,
+      pathToRepo,
+      removeCredentials
+    ).then(retry => (retry.error ? result : retry))
+  })
+
+const getRemoteOrigin = pathToRepo =>
+  readRemoteOrigin(pathToRepo).then(result => result.value)
 
 module.exports = {
   runGitCommand,
+  runGitCommandWithError,
   getGitBranch,
   getSubject,
   getBody,
@@ -91,5 +157,6 @@ module.exports = {
   getSha,
   getTimestamp,
   getRemoteOrigin,
+  readRemoteOrigin,
   gitCommands
 }

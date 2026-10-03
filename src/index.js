@@ -17,6 +17,8 @@ const {
   getGhaEventData
 } = require('./utils')
 const { getPullRequestHeadCommit } = require('./pull-request-head')
+const { getCiCommitInfo, detectCiProvider } = require('./ci')
+const { removeCredentials } = require('./remove-credentials')
 const Promise = require('bluebird')
 const { mergeWith, or } = require('ramda')
 
@@ -48,6 +50,7 @@ function commitInfo (folder) {
     })
     .then(info => {
       const envVariables = getCommitInfoFromEnvironment()
+      envVariables.remote = removeCredentials(envVariables.remote)
       debug('git commit: %o', info)
       debug('env commit: %o', envVariables)
       return mergeWith(or, envVariables, info)
@@ -64,5 +67,8 @@ module.exports = {
   getRemoteOrigin,
   getSubject,
   getTimestamp,
-  getBody
+  getBody,
+  getCiCommitInfo,
+  detectCiProvider,
+  removeCredentials
 }
