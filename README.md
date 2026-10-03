@@ -25,7 +25,7 @@ commitInfo(folder)
     // author
     // sha
     // timestamp (in seconds since epoch)
-    // remote
+    // remote (without credentials)
   })
 ```
 
@@ -35,7 +35,8 @@ Notes:
 - Resolves with [Bluebird](https://github.com/petkaantonov/bluebird) promise.
 - Only uses Git commands, see [src/git-api.js](src/git-api.js)
 - If a command fails, returns `null` for each property
-- If you need to debug, run with `DEBUG=commit-info` environment variable.
+- `remote` never contains a user name or password, also when it comes from `COMMIT_INFO_REMOTE`.
+- If you need to debug, run with `DEBUG=commit-info` environment variable. The debug output does not contain the remote's credentials.
 
 ## CI provider variables
 
@@ -53,6 +54,12 @@ Notes:
 
 AWS CodeBuild gives no branch. The other properties and providers are in [src/ci.js](src/ci.js).
 
+## Containers
+
+git 2.35.2 and later refuse to read a repository owned by another user, with `fatal: unsafe repository` (2.35.2 to 2.37.x) or `fatal: detected dubious ownership in repository` (2.38.0 and later). This is common when a container runs as root on a checkout made by another user. On CI, the read-only git commands then run again with `-c safe.directory=*`. CI means that the `CI` variable is set to a value other than `false` or `0`, or that one of the CI providers in [src/ci-provider.js](src/ci-provider.js) is detected; Jenkins, for example, does not set `CI`. `GOOGLE_CLOUD_PROJECT`, `GCP_PROJECT`, `GCLOUD_PROJECT` and `JENKINS_HOME` do not count, because developers often have them set in their shell. `*` because the folder can be a subfolder of the repository.
+
+git 2.35.2 to 2.37.x ignore `safe.directory` on the command line, so there the git values are `null` (git 2.38.0 and later respect it); run `git config --global --add safe.directory '*'` in the container or set the `COMMIT_INFO_*` variables.
+
 ## Pull request builds
 
 On pull request builds many CI providers check out a commit that merges the pull request into its target branch. GitHub Actions, for example, checks out `refs/pull/<number>/merge`, whose message is `Merge <sha> into <sha>`.
@@ -67,7 +74,7 @@ When the checked-out commit is such a merge, `commitInfo` reports the pull reque
 - Buildkite: `BUILDKITE_PULL_REQUEST_HEAD_COMMIT`
 - Bitbucket Pipelines: `BITBUCKET_COMMIT`
 
-The commit is used only when the checked-out commit is a merge and the commit is one of its parents. If a shallow clone does not contain it (for example `actions/checkout` with the default `fetch-depth: 1`), it is fetched with `git fetch --depth=1 origin <sha>`, with a 3 second timeout. If the fetch fails, the checked-out commit is reported. Set `CURRENTS_DISABLE_HEAD_COMMIT_FETCH=true` to skip the fetch.
+The commit is used only when the checked-out commit is a merge and the commit is one of its parents. If a shallow clone does not contain it (for example `actions/checkout` with the default `fetch-depth: 1`), it is fetched with `git fetch --depth=1 origin <sha>`, with a 3 second timeout. If the fetch fails, the checked-out commit is reported. The fetch does not use the `safe.directory` retry. Set `CURRENTS_DISABLE_HEAD_COMMIT_FETCH=true` to skip the fetch.
 
 The `COMMIT_INFO_*` variables below still take priority. When `COMMIT_INFO_SHA` is set, the pull request's commit is not looked up.
 
@@ -101,12 +108,13 @@ See [docker-example](docker-example) for a full example.
 ## Individual methods
 
 In addition to `commitInfo` this module also exposes individual promise-returning
-methods `getBranch`, `getMessage`, `getEmail`, `getAuthor`, `getSha`, `getTimestamp`, `getRemoteOrigin`. These methods do NOT use fallback environment variables.
+methods `getBranch`, `getMessage`, `getEmail`, `getAuthor`, `getSha`, `getTimestamp`, `getRemoteOrigin`. These methods do NOT use fallback environment variables. `getRemoteOrigin` returns the remote without credentials.
 
 Other exports:
 
 - `getCiCommitInfo(env = process.env)`: the CI provider's values and the provider name, see [CI provider variables](#ci-provider-variables). The `remote` has no credentials.
 - `detectCiProvider(env = process.env)`: the CI provider name, such as `githubActions`, or `null`.
+- `removeCredentials(url)`: removes the user name and password from a URL, keeping the port. Returns other values, such as `git@github.com:o/r.git`, as they are.
 
 For example
 

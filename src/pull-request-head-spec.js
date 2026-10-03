@@ -161,6 +161,20 @@ describe('getPullRequestHeadCommit', function () {
     )
   })
 
+  it('reads the pull request commit on CI when another user owns the repository', async () => {
+    const work = checkout('refs/pull/1/merge')
+    git(work, 'remote', 'set-url', 'origin', path.join(root, 'missing'))
+    process.env.CI = 'true'
+    process.env.GIT_TEST_ASSUME_DIFFERENT_OWNER = '1'
+
+    assert.deepStrictEqual(
+      await getPullRequestHeadCommit(work, repo.mergeSha, {
+        headSha: repo.headSha
+      }),
+      prCommit(repo.headSha)
+    )
+  })
+
   it('takes the sha from a provider variable', async () => {
     const work = checkout('refs/pull/1/merge', 1)
     process.env.CI_MERGE_REQUEST_SOURCE_BRANCH_SHA = repo.headSha

@@ -1,7 +1,8 @@
 'use strict'
 
 const debug = require('debug')('commit-info')
-const execa = require('execa')
+const { execGit } = require('./run-git')
+const { removeCredentialsFromText } = require('./remove-credentials')
 
 // On pull request builds these providers check out a commit that merges the
 // pull request into its target branch. The variables hold the pull request's
@@ -67,14 +68,7 @@ function getHeadSha (ghaEventData) {
   return name ? process.env[name] : null
 }
 
-async function git (folder, args, timeout) {
-  const { stdout } = await execa('git', args, {
-    cwd: folder,
-    timeout,
-    env: { GIT_TERMINAL_PROMPT: '0' }
-  })
-  return stdout
-}
+const git = (folder, args) => execGit(folder, args, { readOnly: true })
 
 // Reads the parent lines stored in the commit object. `git log --format=%P`
 // and `HEAD^2` return nothing in a depth-1 clone.
@@ -123,10 +117,15 @@ async function fetchCommit (folder, sha) {
   // the same time; the one that loses the race for .git/shallow.lock fails.
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      await git(folder, args, FETCH_TIMEOUT_MS)
+      await execGit(folder, args, { timeout: FETCH_TIMEOUT_MS })
       return true
     } catch (e) {
-      debug('fetching %s failed (attempt %d): %o', sha, attempt, e)
+      debug(
+        'fetching %s failed (attempt %d): %s',
+        sha,
+        attempt,
+        removeCredentialsFromText(String(e.stderr || e.message))
+      )
       if (await hasCommit(folder, sha)) {
         return true
       }
