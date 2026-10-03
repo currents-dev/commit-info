@@ -2,7 +2,6 @@
 
 const la = require('lazy-ass')
 const is = require('check-more-types')
-const { mergeWith, or } = require('ramda')
 const sinon = require('sinon')
 const fs = require('fs')
 
@@ -58,13 +57,6 @@ describe('utils', () => {
     it('overwrites first string', () => {
       const o = Object.assign({}, { foo: 'foo' }, { foo: '' })
       la(o.foo === '', o)
-    })
-  })
-
-  describe('R.mergeWith', () => {
-    it('keeps non-empty string', () => {
-      const o = mergeWith(or, { foo: 'foo' }, { foo: '' })
-      la(o.foo === 'foo', o)
     })
   })
 

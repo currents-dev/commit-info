@@ -1,7 +1,7 @@
 {
   "name": "@currents/commit-info",
   "description": "Collects Git commit info from CI or from CLI",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "author": "Gleb Bahmutov <gleb.bahmutov@gmail.com>",
   "contributors": [
     "Gleb Bahmutov <gleb.bahmutov@gmail.com>",
@@ -32,6 +32,7 @@
   },
   "files": [
     "src/*.js",
+    "src/index.d.ts",
     "!src/*-spec.js"
   ],
   "homepage": "https://github.com/currents-dev/commit-info#readme",
@@ -43,6 +44,7 @@
   ],
   "license": "MIT",
   "main": "src/",
+  "types": "src/index.d.ts",
   "private": false,
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
@@ -99,7 +101,6 @@
     "check-more-types": "2.24.0",
     "debug": "4.3.4",
     "execa": "1.0.0",
-    "lazy-ass": "1.6.0",
-    "ramda": "0.26.1"
+    "lazy-ass": "1.6.0"
   }
 }

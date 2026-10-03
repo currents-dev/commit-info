@@ -29,25 +29,26 @@ function getBranch (pathToRepo) {
 }
 
 /**
- * Looks up commit information from environment keys.
- */
-function getCommitInfoFromEnvironment (env = process.env) {
-  return {
-    branch: getValue('COMMIT_INFO_BRANCH')(env),
-    message: getValue('COMMIT_INFO_MESSAGE')(env),
-    email: getValue('COMMIT_INFO_EMAIL')(env),
-    author: getValue('COMMIT_INFO_AUTHOR')(env),
-    sha: getValue('COMMIT_INFO_SHA')(env),
-    timestamp: getValue('COMMIT_INFO_TIMESTAMP')(env),
-    remote: getValue('COMMIT_INFO_REMOTE')(env)
-  }
-}
-
-/**
  * Returns list of Git properties that this module searches for
  */
 function getFields () {
   return ['branch', 'message', 'email', 'author', 'sha', 'remote', 'timestamp']
+}
+
+/**
+ * Name of the environment variable that sets a field, as in COMMIT_INFO_SHA
+ */
+const getEnvName = field => `COMMIT_INFO_${field.toUpperCase()}`
+
+/**
+ * Looks up commit information from environment keys.
+ */
+function getCommitInfoFromEnvironment (env = process.env) {
+  const info = {}
+  getFields().forEach(field => {
+    info[field] = getValue(getEnvName(field))(env)
+  })
+  return info
 }
 
 /**
@@ -85,6 +86,7 @@ module.exports = {
   firstFoundValue,
   getBranch,
   getCommitInfoFromEnvironment,
+  getEnvName,
   getFields,
   getGhaEventData
 }

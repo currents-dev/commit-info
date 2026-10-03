@@ -1,6 +1,7 @@
 'use strict'
 
 const debug = require('debug')('commit-info')
+const fs = require('fs')
 const {
   getSubject,
   getBody,
@@ -9,51 +10,172 @@ const {
   getAuthor,
   getSha,
   getTimestamp,
-  getRemoteOrigin
+  getRemoteOrigin,
+  gitCommands,
+  runGitCommandWithError,
+  readRemoteOrigin,
+  checkIfDetached
 } = require('./git-api')
 const {
   getBranch,
   getCommitInfoFromEnvironment,
+  getEnvName,
+  getFields,
   getGhaEventData
 } = require('./utils')
 const { getPullRequestHeadCommit } = require('./pull-request-head')
 const { getCiCommitInfo, detectCiProvider } = require('./ci')
 const { removeCredentials } = require('./remove-credentials')
+const { describeGitError, isCi, isDubiousOwnership } = require('./run-git')
 const Promise = require('bluebird')
-const { mergeWith, or } = require('ramda')
 
+const GIT_COMMANDS = {
+  branch: gitCommands.branch,
+  message: gitCommands.message,
+  email: gitCommands.email,
+  author: gitCommands.author,
+  sha: gitCommands.sha,
+  timestamp: gitCommands.timestamp
+}
+
+// No CI provider sets a timestamp, and many repositories have no remote, so
+// missing values there do not cause a warning
+const WARN_FIELDS = ['branch', 'sha', 'message', 'author', 'email']
+
+const withoutRemoteCredentials = info =>
+  Object.assign({}, info, { remote: removeCredentials(info.remote) })
+
+/**
+ * Resolves with `{ info, error }`: the values git returned, and the first
+ * error git failed with.
+ */
+function readGit (folder) {
+  const reads = { remote: readRemoteOrigin(folder) }
+  Object.keys(GIT_COMMANDS).forEach(field => {
+    reads[field] = runGitCommandWithError(GIT_COMMANDS[field], folder)
+  })
+  return Promise.props(reads).then(results => {
+    const info = {}
+    let error = null
+    getFields().forEach(field => {
+      info[field] = results[field].value
+      error = error || results[field].error
+    })
+    info.branch = checkIfDetached(info.branch)
+    return { info, error }
+  })
+}
+
+/**
+ * For each field the first value that is set wins:
+ * 1. the COMMIT_INFO_* variable
+ * 2. git
+ * 3. the CI provider's variables
+ *
+ * For the remote the CI provider's value wins over git, as in the Currents
+ * Playwright reporter: an Azure Pipelines clone often has an SSH remote, and
+ * the pull request link needs the HTTPS URL in BUILD_REPOSITORY_URI.
+ */
+function combineCommitInfo (fromEnvironment, fromGit, fromCi) {
+  const combined = {}
+  getFields().forEach(field => {
+    combined[field] =
+      fromEnvironment[field] || fromGit[field] || fromCi[field] || null
+  })
+  combined.remote =
+    fromEnvironment.remote || fromCi.remote || fromGit.remote || null
+  return combined
+}
+
+// Playwright workers each call commitInfo; one warning per process is enough
+let warned = false
+
+const isNotRepository = error =>
+  /not a git repository/i.test(String(error.stderr || error.message || ''))
+
+// Node reports a folder that does not exist as `spawn git ENOENT` too
+const isGitMissing = error => error.code === 'ENOENT'
+
+function describeFailure (folder, gitError) {
+  if (!fs.existsSync(folder)) {
+    return `[commit-info] ${folder} does not exist.`
+  }
+  if (isGitMissing(gitError)) {
+    return `[commit-info] git was not found in PATH, so the commit in ${folder} could not be read.`
+  }
+  return `[commit-info] git failed in ${folder}: ${describeGitError(gitError)}`
+}
+
+function warnAboutMissingFields (folder, gitError, info) {
+  const missing = WARN_FIELDS.filter(field => !info[field])
+  if (!gitError || !missing.length || warned) {
+    return
+  }
+  // a command run outside a repository on a developer machine has no commit
+  const noRepository = isNotRepository(gitError) || !fs.existsSync(folder)
+  if (noRepository && !isCi()) {
+    return
+  }
+  warned = true
+  const lines = [
+    describeFailure(folder, gitError),
+    `Missing commit fields: ${missing.join(', ')}. Set ${missing
+      .map(getEnvName)
+      .join(', ')} to provide them.`
+  ]
+  if (isDubiousOwnership(gitError)) {
+    lines.push(
+      "Or allow the repository: git config --global --add safe.directory '*'. " +
+        'git 2.35.2 to 2.37.x ignore safe.directory set on the command line.'
+    )
+  }
+  console.warn(lines.join('\n'))
+}
+
+/**
+ * Resolves with the commit the folder has checked out. The COMMIT_INFO_*
+ * variables take priority over git; the CI provider's variables fill the
+ * fields git could not read, and take priority over git for the remote. The
+ * remote has no credentials.
+ *
+ * @param {string} [folder] defaults to the current working directory
+ */
 function commitInfo (folder) {
   folder = folder || process.cwd()
   debug('commit-info in folder', folder)
 
   return Promise.props({
-    branch: getBranch(folder),
-    message: getMessage(folder),
-    email: getEmail(folder),
-    author: getAuthor(folder),
-    sha: getSha(folder),
-    timestamp: getTimestamp(folder),
-    remote: getRemoteOrigin(folder),
+    git: readGit(folder),
     ghaEventData: getGhaEventData(
       process.env.GITHUB_EVENT_PATH,
       process.env.GITHUB_ACTIONS
     )
   })
-    .then(info => {
+    .then(({ git, ghaEventData }) => {
       // COMMIT_INFO_SHA names the commit to report, so it is used as is
       if (process.env.COMMIT_INFO_SHA) {
-        return info
+        return Object.assign({ ghaEventData }, git)
       }
-      return getPullRequestHeadCommit(folder, info.sha, info.ghaEventData).then(
-        head => Object.assign({}, info, head)
+      return getPullRequestHeadCommit(folder, git.info.sha, ghaEventData).then(
+        head => ({
+          info: Object.assign({}, git.info, head),
+          error: git.error,
+          ghaEventData
+        })
       )
     })
-    .then(info => {
-      const envVariables = getCommitInfoFromEnvironment()
-      envVariables.remote = removeCredentials(envVariables.remote)
-      debug('git commit: %o', info)
+    .then(({ info: gitInfo, error: gitError, ghaEventData }) => {
+      const envVariables = withoutRemoteCredentials(
+        getCommitInfoFromEnvironment()
+      )
+      const ciInfo = getCiCommitInfo()
+      debug('git commit: %o', gitInfo)
       debug('env commit: %o', envVariables)
-      return mergeWith(or, envVariables, info)
+      debug('CI commit: %o', ciInfo)
+
+      const info = combineCommitInfo(envVariables, gitInfo, ciInfo)
+      warnAboutMissingFields(folder, gitError, info)
+      return Object.assign(info, { ghaEventData })
     })
 }
 

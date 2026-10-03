@@ -149,6 +149,7 @@ module.exports = {
   runGitCommand,
   runGitCommandWithError,
   getGitBranch,
+  checkIfDetached,
   getSubject,
   getBody,
   getMessage,

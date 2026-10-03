@@ -26,21 +26,30 @@ commitInfo(folder)
     // sha
     // timestamp (in seconds since epoch)
     // remote (without credentials)
+    // ghaEventData (GitHub Actions pull request events only)
   })
 ```
 
+Each property comes from the first of these that has a value, or is `null`:
+
+1. the `COMMIT_INFO_*` environment variable, see [Fallback environment variables](#fallback-environment-variables)
+2. git, see [src/git-api.js](src/git-api.js)
+3. the CI provider's environment variables, see [CI provider variables](#ci-provider-variables)
+
+The `remote` is the exception: the CI provider's value comes before git. `COMMIT_INFO_REMOTE` still comes first. On Azure Pipelines, for example, the clone often has an SSH remote, and `BUILD_REPOSITORY_URI` has the HTTPS URL. The CI providers that set a remote are AWS CodeBuild, Azure Pipelines, Bamboo, Buildkite, CircleCI, Drone, GitLab, Semaphore and Netlify, see [src/ci.js](src/ci.js).
+
 Notes:
 
-- Code assumes there is `.git` folder and uses Git commands to get each property, like `git show -s --pretty=%B`, see [src/git-api.js](src/git-api.js). Note: there is fallback to environment variables.
-- Resolves with [Bluebird](https://github.com/petkaantonov/bluebird) promise.
-- Only uses Git commands, see [src/git-api.js](src/git-api.js)
-- If a command fails, returns `null` for each property
-- `remote` never contains a user name or password, also when it comes from `COMMIT_INFO_REMOTE`.
+- git reports no branch for a detached checkout (`HEAD`), so the branch comes from the CI provider. Branch values from `COMMIT_INFO_BRANCH` and the CI provider are reported as they are.
+- `remote` never contains a user name or password, wherever it came from. GitLab's `CI_REPOSITORY_URL`, for example, holds a job token.
+- Resolves with a [Bluebird](https://github.com/petkaantonov/bluebird) promise.
 - If you need to debug, run with `DEBUG=commit-info` environment variable. The debug output does not contain the remote's credentials.
+- When git fails and fields are still empty after the CI provider's variables, `commitInfo` prints one warning with the git error and the `COMMIT_INFO_*` variables to set. No warning when there is no repository and the CI provider's variables fill the fields, or when there is no repository and no CI provider.
+- When git is not installed or not in `PATH`, all the git values are empty and the warning says that git was not found in `PATH`. Install git or set the `COMMIT_INFO_*` variables.
 
 ## CI provider variables
 
-`getCiCommitInfo()` reads the commit from the variables of the CI provider the process runs on. The branch comes from:
+When git does not return a value, it comes from the variables of the CI provider the process runs on. The remote comes from these variables first. The branch comes from:
 
 | Provider | Branch |
 | --- | --- |
@@ -52,13 +61,13 @@ Notes:
 | Bitbucket Pipelines | `BITBUCKET_BRANCH` |
 | Buildkite | `BUILDKITE_BRANCH` |
 
-AWS CodeBuild gives no branch. The other properties and providers are in [src/ci.js](src/ci.js).
+AWS CodeBuild gives no branch. The other properties and providers are in [src/ci.js](src/ci.js). `getCiCommitInfo()` returns these values and the provider name.
 
 ## Containers
 
 git 2.35.2 and later refuse to read a repository owned by another user, with `fatal: unsafe repository` (2.35.2 to 2.37.x) or `fatal: detected dubious ownership in repository` (2.38.0 and later). This is common when a container runs as root on a checkout made by another user. On CI, the read-only git commands then run again with `-c safe.directory=*`. CI means that the `CI` variable is set to a value other than `false` or `0`, or that one of the CI providers in [src/ci-provider.js](src/ci-provider.js) is detected; Jenkins, for example, does not set `CI`. `GOOGLE_CLOUD_PROJECT`, `GCP_PROJECT`, `GCLOUD_PROJECT` and `JENKINS_HOME` do not count, because developers often have them set in their shell. `*` because the folder can be a subfolder of the repository.
 
-git 2.35.2 to 2.37.x ignore `safe.directory` on the command line, so there the git values are `null` (git 2.38.0 and later respect it); run `git config --global --add safe.directory '*'` in the container or set the `COMMIT_INFO_*` variables.
+git 2.35.2 to 2.37.x ignore `safe.directory` on the command line, so there `commitInfo` prints the warning (git 2.38.0 and later respect it); run `git config --global --add safe.directory '*'` in the container or set the `COMMIT_INFO_*` variables.
 
 ## Pull request builds
 
@@ -80,7 +89,7 @@ The `COMMIT_INFO_*` variables below still take priority. When `COMMIT_INFO_SHA` 
 
 ## Fallback environment variables
 
-If getting the commit information using `git` fails for some reason, you can provide the commit information by setting the environment variables. This module will look at the following environment variables as a fallback
+You can provide the commit information by setting these environment variables. They take priority over git and the CI provider's variables.
 
 ```
 branch: COMMIT_INFO_BRANCH
@@ -108,11 +117,11 @@ See [docker-example](docker-example) for a full example.
 ## Individual methods
 
 In addition to `commitInfo` this module also exposes individual promise-returning
-methods `getBranch`, `getMessage`, `getEmail`, `getAuthor`, `getSha`, `getTimestamp`, `getRemoteOrigin`. These methods do NOT use fallback environment variables. `getRemoteOrigin` returns the remote without credentials.
+methods `getBranch`, `getMessage`, `getEmail`, `getAuthor`, `getSha`, `getTimestamp`, `getRemoteOrigin`. These methods use git only, not the environment variables. `getRemoteOrigin` returns the remote without credentials.
 
 Other exports:
 
-- `getCiCommitInfo(env = process.env)`: the CI provider's values and the provider name, see [CI provider variables](#ci-provider-variables). The `remote` has no credentials.
+- `getCiCommitInfo(env = process.env)`: the CI provider's values, see [CI provider variables](#ci-provider-variables). The `remote` has no credentials.
 - `detectCiProvider(env = process.env)`: the CI provider name, such as `githubActions`, or `null`.
 - `removeCredentials(url)`: removes the user name and password from a URL, keeping the port. Returns other values, such as `git@github.com:o/r.git`, as they are.
 
