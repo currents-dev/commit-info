@@ -1,6 +1,7 @@
 'use strict'
 
 const debug = require('debug')('commit-info')
+const fs = require('fs')
 const {
   getSubject,
   getBody,
@@ -92,7 +93,18 @@ let warned = false
 const isNotRepository = error =>
   /not a git repository/i.test(String(error.stderr || error.message || ''))
 
+// Node reports a folder that does not exist as `spawn git ENOENT` too
 const isGitMissing = error => error.code === 'ENOENT'
+
+function describeFailure (folder, gitError) {
+  if (!fs.existsSync(folder)) {
+    return `[commit-info] ${folder} does not exist.`
+  }
+  if (isGitMissing(gitError)) {
+    return `[commit-info] git was not found in PATH, so the commit in ${folder} could not be read.`
+  }
+  return `[commit-info] git failed in ${folder}: ${describeGitError(gitError)}`
+}
 
 function warnAboutMissingFields (folder, gitError, info) {
   const missing = WARN_FIELDS.filter(field => !info[field])
@@ -100,14 +112,13 @@ function warnAboutMissingFields (folder, gitError, info) {
     return
   }
   // a command run outside a repository on a developer machine has no commit
-  if (isNotRepository(gitError) && !isCi()) {
+  const noRepository = isNotRepository(gitError) || !fs.existsSync(folder)
+  if (noRepository && !isCi()) {
     return
   }
   warned = true
   const lines = [
-    isGitMissing(gitError)
-      ? `[commit-info] git was not found in PATH, so the commit in ${folder} could not be read.`
-      : `[commit-info] git failed in ${folder}: ${describeGitError(gitError)}`,
+    describeFailure(folder, gitError),
     `Missing commit fields: ${missing.join(', ')}. Set ${missing
       .map(getEnvName)
       .join(', ')} to provide them.`

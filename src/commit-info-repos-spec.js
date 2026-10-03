@@ -31,8 +31,10 @@ const git = (cwd, ...args) =>
  * runs the tests do not apply and each test can get its warning.
  * Resolves with the result and everything the process printed.
  */
-function runCommitInfo (cwd, env) {
-  const script = `require(${JSON.stringify(__dirname)}).commitInfo()
+function runCommitInfo (cwd, env, folder) {
+  const script = `require(${JSON.stringify(__dirname)}).commitInfo(${
+    folder ? JSON.stringify(folder) : ''
+  })
     .then(info => console.log(JSON.stringify(info)))`
   const child = spawnSync(process.execPath, ['-e', script], {
     cwd,
@@ -203,6 +205,22 @@ describe('commitInfo in real repositories', function () {
     assert.strictEqual(info.remote, null)
     assert(stderr.includes('git was not found in PATH'), stderr)
     assert.strictEqual(stderr.match(/\[commit-info\]/g).length, 1, stderr)
+  })
+
+  describe('a folder that does not exist', () => {
+    it('says so on CI', () => {
+      const missing = path.join(root, 'missing')
+      const { info, stderr } = runCommitInfo(root, { CI: 'true' }, missing)
+      assert.strictEqual(info.sha, null)
+      assert(stderr.includes(`${missing} does not exist`), stderr)
+      assert(!stderr.includes('git was not found'), stderr)
+    })
+
+    it('does not warn outside CI', () => {
+      const missing = path.join(root, 'missing')
+      const { stderr } = runCommitInfo(root, {}, missing)
+      assert.strictEqual(stderr, '')
+    })
   })
 
   describe('no repository', () => {
