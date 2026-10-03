@@ -1,13 +1,14 @@
+/** Copied from the GitHub event payload; a field the payload lacks is undefined */
 export interface GhaEventData {
-  headRef: string;
-  headSha: string;
-  baseRef: string;
-  baseSha: string;
-  issueUrl: string;
-  htmlUrl: string;
-  prTitle: string;
-  senderAvatarUrl: string;
-  senderHtmlUrl: string;
+  headRef?: string;
+  headSha?: string;
+  baseRef?: string;
+  baseSha?: string;
+  issueUrl?: string;
+  htmlUrl?: string;
+  prTitle?: string;
+  senderAvatarUrl?: string;
+  senderHtmlUrl?: string;
 }
 
 export interface CommitInfo {
