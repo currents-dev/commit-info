@@ -88,14 +88,16 @@ describe('describeGitError', () => {
 describe('execGit', function () {
   this.timeout(10000)
 
-  let root, restoreEnvironment
+  let root, home, restoreEnvironment
 
+  // An empty HOME, because a global git config can mark every repository as
+  // safe, as the GitHub Actions runner does
   const env = extra =>
     mockedEnv(
       Object.assign(
         {
           PATH: process.env.PATH,
-          HOME: process.env.HOME,
+          HOME: home,
           GIT_TEST_ASSUME_DIFFERENT_OWNER: '1'
         },
         extra
@@ -105,11 +107,13 @@ describe('execGit', function () {
 
   before(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'run-git-'))
+    home = fs.mkdtempSync(path.join(os.tmpdir(), 'run-git-home-'))
     execFileSync('git', ['init', '-q', root])
   })
 
   after(() => {
     fs.rmSync(root, { recursive: true, force: true })
+    fs.rmSync(home, { recursive: true, force: true })
   })
 
   afterEach(() => {

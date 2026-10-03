@@ -10,6 +10,10 @@ const path = require('path')
 const TOKEN = 'glcbt-64_SECRET_TOKEN'
 const GITLAB_REMOTE = `https://gitlab-ci-token:${TOKEN}@gitlab.com/org/repo.git`
 
+// An empty HOME for commitInfo, because a global git config can mark every
+// repository as safe, as the GitHub Actions runner does
+let home
+
 const git = (cwd, ...args) =>
   execFileSync('git', ['-c', 'commit.gpgsign=false', ...args], {
     cwd,
@@ -33,7 +37,7 @@ function runCommitInfo (cwd, env) {
   const child = spawnSync(process.execPath, ['-e', script], {
     cwd,
     encoding: 'utf8',
-    env: Object.assign({ PATH: process.env.PATH, HOME: process.env.HOME }, env)
+    env: Object.assign({ PATH: process.env.PATH, HOME: home }, env)
   })
   assert.strictEqual(child.status, 0, child.stderr)
   const lines = child.stdout.trim().split('\n')
@@ -51,6 +55,8 @@ describe('commitInfo in real repositories', function () {
 
   before(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'commit-info-repos-'))
+    home = path.join(root, 'home')
+    fs.mkdirSync(home)
     repo = path.join(root, 'repo')
     git(root, 'init', '-q', '-b', 'main', repo)
     git(repo, 'commit', '-q', '--allow-empty', '-m', 'feat: first')

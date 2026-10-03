@@ -120,25 +120,25 @@ describe('git-api', () => {
     const TOKEN = 'glcbt-64_SECRET_TOKEN'
     const { runGitCommandWithError, readRemoteOrigin } = require('./git-api')
 
-    let root, restoreEnvironment
+    let root, home, restoreEnvironment
 
+    // An empty HOME, because a global git config can mark every repository as
+    // safe, as the GitHub Actions runner does
     const env = extra =>
-      mockedEnv(
-        Object.assign(
-          { PATH: process.env.PATH, HOME: process.env.HOME },
-          extra
-        ),
-        { clear: true }
-      )
+      mockedEnv(Object.assign({ PATH: process.env.PATH, HOME: home }, extra), {
+        clear: true
+      })
 
     beforeEach(() => {
       root = fs.mkdtempSync(join(os.tmpdir(), 'git-api-'))
+      home = fs.mkdtempSync(join(os.tmpdir(), 'git-api-home-'))
       execFileSync('git', ['init', '-q', root])
     })
 
     afterEach(() => {
       restoreEnvironment()
       fs.rmSync(root, { recursive: true, force: true })
+      fs.rmSync(home, { recursive: true, force: true })
     })
 
     it('returns no value and no error when the remote is not set', () => {
