@@ -44,7 +44,7 @@ export function getCiCommitInfo(env?: Env): CiCommitInfo;
 export function detectCiProvider(env?: Env): string | null;
 export function removeCredentials<T extends string | null | undefined>(
   url: T
-): T;
+): T extends string ? string : T;
 
 export function getBranch(folder?: string): Promise<string | null>;
 export function getMessage(folder?: string): Promise<string | null>;
