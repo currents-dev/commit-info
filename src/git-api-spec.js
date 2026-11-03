@@ -114,6 +114,12 @@ describe('git-api', () => {
       }).then(snapshot)
     })
   })
+  it('throws when the folder is not a string', () => {
+    const { getMessage, getGitBranch } = require('./git-api')
+    assert.throws(() => getMessage(123), /^Error: missing repo path 123$/)
+    assert.throws(() => getGitBranch(true), /^Error: missing repo path true$/)
+  })
+
   describe('in a repository', function () {
     this.timeout(10000)
 

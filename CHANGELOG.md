@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+Breaking: the functions return a native `Promise` instead of a Bluebird promise. Bluebird methods such as `.tap()` and `.spread()` are no longer available on the result. Code that uses `await` or `.then()` does not change.
+
+- The only runtime dependency is `debug`. `bluebird`, `execa`, `lazy-ass` and `check-more-types` are removed, which removes 22 packages from an install.
+- git runs with `child_process.spawn`, without a shell, as before. Unlike execa, the `node_modules/.bin` folders and the folder of the `node` binary are not added to `PATH`, so a `git` file in `node_modules/.bin` is not used.
+- `debug` is 4.4.3.
+
 ## 2.0.0
 
 Breaking: `commitInfo()` returns other values than 1.x.

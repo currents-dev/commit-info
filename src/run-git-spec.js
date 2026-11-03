@@ -185,3 +185,97 @@ describe('execGit', function () {
     await assert.rejects(showTopLevel({ readOnly: true }), isDubiousOwnership)
   })
 })
+
+describe('execGit output and errors', function () {
+  this.timeout(20000)
+
+  let root, home, restoreEnvironment
+
+  const git = (...args) =>
+    execFileSync('git', ['-c', 'commit.gpgsign=false', ...args], {
+      cwd: root,
+      env: Object.assign({}, process.env, {
+        GIT_AUTHOR_NAME: 'Zoë Ångström',
+        GIT_AUTHOR_EMAIL: 'zoe@example.com',
+        GIT_COMMITTER_NAME: 'Zoë Ångström',
+        GIT_COMMITTER_EMAIL: 'zoe@example.com'
+      })
+    })
+
+  const commitVerbatim = message => {
+    const file = path.join(home, 'message')
+    fs.writeFileSync(file, message)
+    git('commit', '-q', '--allow-empty', '--cleanup=verbatim', '-F', file)
+  }
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'exec-git-'))
+    home = fs.mkdtempSync(path.join(os.tmpdir(), 'exec-git-home-'))
+    git('init', '-q')
+    restoreEnvironment = mockedEnv(
+      { PATH: process.env.PATH, HOME: home, GIT_CONFIG_NOSYSTEM: '1' },
+      { clear: true }
+    )
+  })
+
+  afterEach(() => {
+    restoreEnvironment()
+    fs.rmSync(root, { recursive: true, force: true })
+    fs.rmSync(home, { recursive: true, force: true })
+  })
+
+  it('removes only the last newline of stdout', async () => {
+    commitVerbatim('feat: ünïcödé 🚀\r\n\r\nbody\n\n')
+    assert.strictEqual(
+      await execGit(root, ['show', '-s', '--pretty=%B']),
+      'feat: ünïcödé 🚀\r\n\r\nbody\n\n'
+    )
+    assert.strictEqual(
+      await execGit(root, ['show', '-s', '--pretty=%an']),
+      'Zoë Ångström'
+    )
+  })
+
+  it('rejects with the exit code, the output and the command', async () => {
+    commitVerbatim('m')
+    await assert.rejects(execGit(root, ['show', '-s', 'nope']), error => {
+      assert.strictEqual(error.code, 128)
+      assert.strictEqual(error.stdout, '')
+      assert(error.stderr.startsWith('fatal: ambiguous argument'), error.stderr)
+      assert.strictEqual(
+        error.message,
+        `Command failed: git show -s nope\n${error.stderr}\n`
+      )
+      assert.strictEqual(error.timedOut, false)
+      return true
+    })
+  })
+
+  it('rejects with ENOENT when git is not in PATH', async () => {
+    restoreEnvironment()
+    restoreEnvironment = mockedEnv({ PATH: home }, { clear: true })
+    await assert.rejects(execGit(root, ['rev-parse', 'HEAD']), {
+      code: 'ENOENT',
+      message: 'spawn git ENOENT'
+    })
+  })
+
+  it('passes the environment and turns off the terminal prompt', async () => {
+    restoreEnvironment()
+    restoreEnvironment = mockedEnv(
+      { PATH: process.env.PATH, HOME: home, MY_VARIABLE: 'kept' },
+      { clear: true }
+    )
+    const printenv = name =>
+      execGit(root, ['-c', `alias.env=!printenv ${name}`, 'env'])
+    assert.strictEqual(await printenv('GIT_TERMINAL_PROMPT'), '0')
+    assert.strictEqual(await printenv('MY_VARIABLE'), 'kept')
+  })
+
+  it('rejects when stdout is over 10 MB, as execa did', async () => {
+    commitVerbatim('x'.repeat(10500000))
+    await assert.rejects(execGit(root, ['show', '-s', '--pretty=%B']), {
+      message: 'stdout maxBuffer exceeded'
+    })
+  })
+})

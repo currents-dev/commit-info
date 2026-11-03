@@ -87,10 +87,11 @@ describe('commit-info', () => {
       stubSpawnOnce(gitCommands.remoteOriginUrl, 1, '', 'no remote origin')
       stubSpawnOnce(gitCommands.timestamp, 0, '123', '')
       return commitInfo()
-        .tap(info => {
+        .then(info => {
           la(info.message === null, 'message should be null', info)
           la(info.author === null, 'author should be null', info)
           la(info.remote === null, 'remoteOriginUrl should be null', info)
+          return info
         })
         .then(snapshot)
     })
