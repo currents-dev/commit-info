@@ -75,6 +75,29 @@ const MAX_OUTPUT_LENGTH = 1000 * 1000 * 10
 
 const stripFinalNewline = text => text.replace(/\n$/, '').replace(/\r$/, '')
 
+// The git processes that run now. They are killed when Node exits, as execa 1.0
+// did. A signal that ends Node without an 'exit' event, such as SIGTERM with no
+// handler, leaves them running.
+const runningChildren = new Set()
+
+const killRunningChildren = () => {
+  runningChildren.forEach(child => child.kill())
+}
+
+const addRunningChild = child => {
+  if (runningChildren.size === 0) {
+    process.on('exit', killRunningChildren)
+  }
+  runningChildren.add(child)
+}
+
+const removeRunningChild = child => {
+  runningChildren.delete(child)
+  if (runningChildren.size === 0) {
+    process.removeListener('exit', killRunningChildren)
+  }
+}
+
 /**
  * Runs `git <args>` and resolves with stdout without the final newline.
  * Rejects with an error that has `code` (the exit code), `stdout`, `stderr`
@@ -95,6 +118,7 @@ function spawnGit (folder, args, timeout) {
       reject(e)
       return
     }
+    addRunningChild(child)
 
     const output = { stdout: '', stderr: '' }
     let openStreams = 0
@@ -135,6 +159,7 @@ function spawnGit (folder, args, timeout) {
         return
       }
       clearTimeout(timer)
+      removeRunningChild(child)
       result = done
       finish()
     }

@@ -279,3 +279,114 @@ describe('execGit output and errors', function () {
     })
   })
 })
+
+describe('git processes when Node exits', function () {
+  this.timeout(20000)
+
+  let root, restoreEnvironment
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'exec-git-exit-'))
+    // a git that writes its process ID and waits
+    fs.writeFileSync(
+      path.join(root, 'git'),
+      '#!/bin/sh\necho $$ >> "$PID_FILE"\nexec sleep 30\n',
+      { mode: 0o755 }
+    )
+  })
+
+  afterEach(() => {
+    if (restoreEnvironment) {
+      restoreEnvironment()
+      restoreEnvironment = null
+    }
+    fs.rmSync(root, { recursive: true, force: true })
+  })
+
+  const isRunning = pid => {
+    try {
+      process.kill(pid, 0)
+      return true
+    } catch (e) {
+      return false
+    }
+  }
+
+  const waitFor = async condition => {
+    for (let i = 0; i < 100 && !condition(); i++) {
+      await new Promise(resolve => setTimeout(resolve, 50))
+    }
+    return condition()
+  }
+
+  const readPids = pidFile =>
+    fs.existsSync(pidFile)
+      ? fs
+        .readFileSync(pidFile, 'utf8')
+        .trim()
+        .split('\n')
+        .map(Number)
+      : []
+
+  // the child process runs two git commands and ends as `ending` says
+  const runAndEnd = ending => {
+    const pidFile = path.join(root, 'pids')
+    const runGit = JSON.stringify(require.resolve('./run-git'))
+    const script = `
+      const { execGit } = require(${runGit})
+      const fs = require('fs')
+      execGit(${JSON.stringify(root)}, ['status']).catch(() => {})
+      execGit(${JSON.stringify(root)}, ['log']).catch(() => {})
+      const timer = setInterval(() => {
+        const pids = fs.existsSync(process.env.PID_FILE)
+          ? fs.readFileSync(process.env.PID_FILE, 'utf8').trim().split('\\n')
+          : []
+        if (pids.length === 2) {
+          clearInterval(timer)
+          ${ending}
+        }
+      }, 20)`
+    const child = require('child_process').spawnSync(
+      process.execPath,
+      ['-e', script],
+      {
+        encoding: 'utf8',
+        env: Object.assign({}, process.env, {
+          PATH: `${root}:${process.env.PATH}`,
+          PID_FILE: pidFile
+        })
+      }
+    )
+    return { child, pids: readPids(pidFile) }
+  }
+
+  it('kills the running git processes on process.exit()', async () => {
+    const { pids } = runAndEnd('process.exit(0)')
+    assert.strictEqual(pids.length, 2)
+    assert(await waitFor(() => !pids.some(isRunning)), `running: ${pids}`)
+  })
+
+  it('kills the running git processes on an uncaught error', async () => {
+    const { child, pids } = runAndEnd("throw new Error('uncaught')")
+    assert.strictEqual(child.status, 1, child.stderr)
+    assert.strictEqual(pids.length, 2)
+    assert(await waitFor(() => !pids.some(isRunning)), `running: ${pids}`)
+  })
+
+  it('adds one exit listener while git runs and removes it after', async () => {
+    restoreEnvironment = mockedEnv({
+      PATH: `${root}:${process.env.PATH}`,
+      PID_FILE: path.join(root, 'pids')
+    })
+    const listeners = process.listenerCount('exit')
+    const runs = [
+      execGit(root, ['status'], { timeout: 5000 }),
+      execGit(root, ['log'], { timeout: 5000 })
+    ].map(run => run.catch(e => e))
+    assert(await waitFor(() => readPids(path.join(root, 'pids')).length === 2))
+    assert.strictEqual(process.listenerCount('exit'), listeners + 1)
+    readPids(path.join(root, 'pids')).forEach(pid => process.kill(pid))
+    await Promise.all(runs)
+    assert.strictEqual(process.listenerCount('exit'), listeners)
+  })
+})
