@@ -1,6 +1,6 @@
 'use strict'
 
-/* eslint-env mocha */
+/* global describe, it, beforeAll, afterAll, beforeEach, afterEach */
 const assert = require('assert')
 const { execFileSync } = require('child_process')
 const fs = require('fs')
@@ -85,9 +85,7 @@ describe('describeGitError', () => {
   })
 })
 
-describe('execGit', function () {
-  this.timeout(10000)
-
+describe('execGit', { timeout: 10000 }, () => {
   let root, home, restoreEnvironment
 
   // No global or system git config, because those can mark every repository
@@ -106,13 +104,13 @@ describe('execGit', function () {
       { clear: true }
     )
 
-  before(() => {
+  beforeAll(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'run-git-'))
     home = fs.mkdtempSync(path.join(os.tmpdir(), 'run-git-home-'))
     execFileSync('git', ['init', '-q', root])
   })
 
-  after(() => {
+  afterAll(() => {
     fs.rmSync(root, { recursive: true, force: true })
     fs.rmSync(home, { recursive: true, force: true })
   })
@@ -186,10 +184,15 @@ describe('execGit', function () {
   })
 })
 
-describe('execGit output and errors', function () {
-  this.timeout(20000)
+const waitFor = async condition => {
+  for (let i = 0; i < 100 && !condition(); i++) {
+    await new Promise(resolve => setTimeout(resolve, 50))
+  }
+  return condition()
+}
 
-  let root, home, restoreEnvironment
+describe('execGit output and errors', { timeout: 20000 }, () => {
+  let root, home, restoreEnvironment, exitListeners
 
   const git = (...args) =>
     execFileSync('git', ['-c', 'commit.gpgsign=false', ...args], {
@@ -212,14 +215,19 @@ describe('execGit output and errors', function () {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'exec-git-'))
     home = fs.mkdtempSync(path.join(os.tmpdir(), 'exec-git-home-'))
     git('init', '-q')
+    exitListeners = process.listenerCount('exit')
     restoreEnvironment = mockedEnv(
       { PATH: process.env.PATH, HOME: home, GIT_CONFIG_NOSYSTEM: '1' },
       { clear: true }
     )
   })
 
-  afterEach(() => {
+  afterEach(async () => {
     restoreEnvironment()
+    // After 'rejects when stdout is over 10 MB' git runs until it finds the
+    // closed pipe. Its exit listener would break the listener count in 'adds
+    // one exit listener while git runs and removes it after'.
+    await waitFor(() => process.listenerCount('exit') === exitListeners)
     fs.rmSync(root, { recursive: true, force: true })
     fs.rmSync(home, { recursive: true, force: true })
   })
@@ -280,9 +288,7 @@ describe('execGit output and errors', function () {
   })
 })
 
-describe('git processes when Node exits', function () {
-  this.timeout(20000)
-
+describe('git processes when Node exits', { timeout: 20000 }, () => {
   let root, restoreEnvironment
 
   beforeEach(() => {
@@ -310,13 +316,6 @@ describe('git processes when Node exits', function () {
     } catch (e) {
       return false
     }
-  }
-
-  const waitFor = async condition => {
-    for (let i = 0; i < 100 && !condition(); i++) {
-      await new Promise(resolve => setTimeout(resolve, 50))
-    }
-    return condition()
   }
 
   const readPids = pidFile =>

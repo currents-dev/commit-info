@@ -2,7 +2,7 @@
 
 const la = require('lazy-ass')
 
-/* eslint-env mocha */
+/* global describe, it */
 describe('utils', () => {
   const event = {
     pull_request: {

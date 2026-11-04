@@ -1,0 +1,19 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`git-api > getting commit info > works 1`] = `
+{
+  "author": "John Doe",
+  "email": "me@foo.com",
+  "message": "important commit",
+  "remote": "git@github.com/repo",
+  "sha": "abc123",
+  "timestamp": "123",
+}
+`;
+
+exports[`git-api > subject and body > gets subject and body 1`] = `
+{
+  "body": "more details",
+  "subject": "commit does this",
+}
+`;

@@ -1,9 +1,8 @@
 'use strict'
 
-/* eslint-env mocha */
+/* global describe, it, beforeEach, afterEach, expect */
 const { commitInfo } = require('.')
 const { stubSpawnOnce } = require('stub-spawn-once')
-const snapshot = require('snap-shot-it')
 const { gitCommands } = require('./git-api')
 const la = require('lazy-ass')
 const is = require('check-more-types')
@@ -64,7 +63,7 @@ describe('commit-info', () => {
 
     it('has certain api', () => {
       const api = require('.')
-      snapshot(Object.keys(api))
+      expect(Object.keys(api)).toMatchSnapshot()
     })
 
     it('returns information', () => {
@@ -75,7 +74,7 @@ describe('commit-info', () => {
       stubSpawnOnce(gitCommands.sha, 0, 'abc123', '')
       stubSpawnOnce(gitCommands.timestamp, 0, '123', '')
       stubSpawnOnce(gitCommands.remoteOriginUrl, 0, 'git@github.com/repo', '')
-      return commitInfo().then(snapshot)
+      return commitInfo().then(value => expect(value).toMatchSnapshot())
     })
 
     it('returns nulls for missing fields', () => {
@@ -93,7 +92,7 @@ describe('commit-info', () => {
           la(info.remote === null, 'remoteOriginUrl should be null', info)
           return info
         })
-        .then(snapshot)
+        .then(value => expect(value).toMatchSnapshot())
     })
 
     it('has getRemoteOrigin method', () => {
@@ -121,7 +120,7 @@ describe('commit-info', () => {
 
     it('has certain api', () => {
       const api = require('.')
-      snapshot(Object.keys(api))
+      expect(Object.keys(api)).toMatchSnapshot()
     })
 
     it('returns information', () => {
@@ -132,7 +131,7 @@ describe('commit-info', () => {
       stubSpawnOnce(gitCommands.sha, 0, 'abc123', '')
       stubSpawnOnce(gitCommands.timestamp, 0, '123', '')
       stubSpawnOnce(gitCommands.remoteOriginUrl, 0, 'git@github.com/repo', '')
-      return commitInfo().then(snapshot)
+      return commitInfo().then(value => expect(value).toMatchSnapshot())
     })
   })
 })
