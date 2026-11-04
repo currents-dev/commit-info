@@ -1,6 +1,6 @@
 'use strict'
 
-/* eslint-env mocha */
+/* global describe, it, beforeAll, afterAll, beforeEach, afterEach */
 const assert = require('assert')
 const { execFileSync } = require('child_process')
 const fs = require('fs')
@@ -96,9 +96,7 @@ const prCommit = sha => ({
   message: 'feat: add retries\n\nLonger description.\n'
 })
 
-describe('getPullRequestHeadCommit', function () {
-  this.timeout(20000)
-
+describe('getPullRequestHeadCommit', { timeout: 20000 }, () => {
   let root, repo, workRoot, restoreEnvironment
 
   /** Checks out `ref` of the origin in a new repo */
@@ -115,12 +113,12 @@ describe('getPullRequestHeadCommit', function () {
     return work
   }
 
-  before(() => {
+  beforeAll(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-head-commit-'))
     repo = createOrigin(root)
   })
 
-  after(() => {
+  afterAll(() => {
     fs.rmSync(root, { recursive: true, force: true })
   })
 

@@ -27,7 +27,6 @@ const { getPullRequestHeadCommit } = require('./pull-request-head')
 const { getCiCommitInfo, detectCiProvider } = require('./ci')
 const { removeCredentials } = require('./remove-credentials')
 const { describeGitError, isCi, isDubiousOwnership } = require('./run-git')
-const Promise = require('bluebird')
 
 const GIT_COMMANDS = {
   branch: gitCommands.branch,
@@ -54,12 +53,13 @@ function readGit (folder) {
   Object.keys(GIT_COMMANDS).forEach(field => {
     reads[field] = runGitCommandWithError(GIT_COMMANDS[field], folder)
   })
-  return Promise.props(reads).then(results => {
+  const fields = getFields()
+  return Promise.all(fields.map(field => reads[field])).then(results => {
     const info = {}
     let error = null
-    getFields().forEach(field => {
-      info[field] = results[field].value
-      error = error || results[field].error
+    fields.forEach((field, i) => {
+      info[field] = results[i].value
+      error = error || results[i].error
     })
     info.branch = checkIfDetached(info.branch)
     return { info, error }
@@ -144,14 +144,11 @@ function commitInfo (folder) {
   folder = folder || process.cwd()
   debug('commit-info in folder', folder)
 
-  return Promise.props({
-    git: readGit(folder),
-    ghaEventData: getGhaEventData(
-      process.env.GITHUB_EVENT_PATH,
-      process.env.GITHUB_ACTIONS
-    )
-  })
-    .then(({ git, ghaEventData }) => {
+  return Promise.all([
+    readGit(folder),
+    getGhaEventData(process.env.GITHUB_EVENT_PATH, process.env.GITHUB_ACTIONS)
+  ])
+    .then(([git, ghaEventData]) => {
       // COMMIT_INFO_SHA names the commit to report, so it is used as is
       if (process.env.COMMIT_INFO_SHA) {
         return Object.assign({ ghaEventData }, git)

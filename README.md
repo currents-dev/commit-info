@@ -5,7 +5,7 @@ Collects Git commit info from git CLI
 
 ## Install
 
-Requires [Node](https://nodejs.org/en/) version 8 or above.
+Tested on [Node.js](https://nodejs.org/en/) 22 and 24.
 
 ```sh
 npm install --save @currents/commit-info
@@ -42,7 +42,7 @@ Notes:
 
 - git reports no branch for a detached checkout (`HEAD`), so the branch comes from the CI provider. Branch values from `COMMIT_INFO_BRANCH` and the CI provider are reported as they are.
 - `remote` never contains a user name or password, wherever it came from. GitLab's `CI_REPOSITORY_URL`, for example, holds a job token.
-- Resolves with a [Bluebird](https://github.com/petkaantonov/bluebird) promise.
+- Resolves with a native `Promise`.
 - If you need to debug, run with `DEBUG=commit-info` environment variable. The debug output does not contain the remote's credentials.
 - When git fails and fields are still empty after the CI provider's variables, `commitInfo` prints one warning with the git error and the `COMMIT_INFO_*` variables to set. No warning when there is no repository and the CI provider's variables fill the fields, or when there is no repository and no CI provider.
 - When git is not installed or not in `PATH`, all the git values are empty and the warning says that git was not found in `PATH`. Install git or set the `COMMIT_INFO_*` variables.

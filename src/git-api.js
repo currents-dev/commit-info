@@ -1,7 +1,4 @@
 const debug = require('debug')('commit-info')
-const la = require('lazy-ass')
-const is = require('check-more-types')
-const Promise = require('bluebird')
 const { removeCredentials } = require('./remove-credentials')
 const {
   execGit,
@@ -46,22 +43,28 @@ const toArgs = gitCommand => gitCommand.split(' ').slice(1)
  *   logged, so it can remove credentials
  */
 const runGitCommandWithError = (gitCommand, pathToRepo, transform) => {
-  la(is.unemptyString(gitCommand), 'missing git command', gitCommand)
-  la(gitCommand.startsWith('git'), 'invalid git command', gitCommand)
+  if (typeof gitCommand !== 'string' || !gitCommand) {
+    throw new Error(`missing git command ${JSON.stringify(gitCommand)}`)
+  }
+  if (!gitCommand.startsWith('git')) {
+    throw new Error(`invalid git command ${JSON.stringify(gitCommand)}`)
+  }
 
   pathToRepo = pathToRepo || process.cwd()
-  la(is.unemptyString(pathToRepo), 'missing repo path', pathToRepo)
+  if (typeof pathToRepo !== 'string') {
+    throw new Error(`missing repo path ${JSON.stringify(pathToRepo)}`)
+  }
   transform = transform || keepValue
 
   debug('running git command: %s', gitCommand)
   debug('in folder %s', pathToRepo)
 
-  return Promise.try(() =>
-    execGit(pathToRepo, toArgs(gitCommand), { readOnly: true })
-  )
+  return execGit(pathToRepo, toArgs(gitCommand), { readOnly: true })
     .then(transform)
-    .tap(stdout => debug('git stdout:', stdout))
-    .then(stdout => ({ value: returnNullIfEmpty(stdout), error: null }))
+    .then(stdout => {
+      debug('git stdout:', stdout)
+      return { value: returnNullIfEmpty(stdout), error: null }
+    })
     .catch(e => {
       debug(
         'got an error running command "%s" in folder "%s": %s',

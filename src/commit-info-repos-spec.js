@@ -1,6 +1,6 @@
 'use strict'
 
-/* eslint-env mocha */
+/* global describe, it, beforeAll, afterAll, afterEach */
 const assert = require('assert')
 const { execFileSync, spawnSync } = require('child_process')
 const fs = require('fs')
@@ -53,12 +53,10 @@ function runCommitInfo (cwd, env, folder) {
   }
 }
 
-describe('commitInfo in real repositories', function () {
-  this.timeout(20000)
-
+describe('commitInfo in real repositories', { timeout: 20000 }, () => {
   let root, repo, sha
 
-  before(() => {
+  beforeAll(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'commit-info-repos-'))
     home = path.join(root, 'home')
     fs.mkdirSync(home)
@@ -70,7 +68,7 @@ describe('commitInfo in real repositories', function () {
     sha = git(repo, 'rev-parse', 'HEAD')
   })
 
-  after(() => {
+  afterAll(() => {
     fs.rmSync(root, { recursive: true, force: true })
   })
 

@@ -1,6 +1,6 @@
 'use strict'
 
-/* eslint-env mocha */
+/* global describe, it */
 const assert = require('assert')
 const { getCiCommitInfo, detectCiProvider } = require('./ci')
 

@@ -2,10 +2,9 @@
 
 const la = require('lazy-ass')
 const is = require('check-more-types')
-const sinon = require('sinon')
 const fs = require('fs')
 
-/* eslint-env mocha */
+/* global describe, it, beforeEach, afterEach, vi */
 describe('utils', () => {
   const event = {
     pull_request: {
@@ -90,13 +89,13 @@ describe('utils', () => {
     const { getGhaEventData } = require('./utils')
 
     beforeEach(() => {
-      readFileStub = sinon
-        .stub(fs, 'readFileSync')
-        .returns(JSON.stringify(event))
+      readFileStub = vi
+        .spyOn(fs, 'readFileSync')
+        .mockReturnValue(JSON.stringify(event))
     })
 
     afterEach(() => {
-      readFileStub.restore()
+      readFileStub.mockRestore()
     })
 
     it('returns event data if file path and gha env are truthy', () => {

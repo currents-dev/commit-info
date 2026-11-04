@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.0.0
+
+Breaking: the functions return a native `Promise` instead of a Bluebird promise. Bluebird methods such as `.tap()` and `.spread()` are no longer available on the result. Code that uses `await` or `.then()` does not change.
+
+- The only runtime dependency is `debug`. `bluebird`, `execa`, `lazy-ass` and `check-more-types` are removed, which removes 22 packages from an install.
+- git runs with `child_process.spawn`, without a shell, as before. When Node exits, git commands that still run are killed, as before.
+- `debug` is 4.4.3.
+- `package.json` no longer declares `engines`. The package is tested on Node.js 22 and 24.
+
+Other differences from execa 1.0:
+
+- The `node_modules/.bin` folders and the folder of the `node` binary are not added to `PATH`, so a `git` file in `node_modules/.bin` is not used.
+- A signal that ends Node without an `exit` event, such as a SIGTERM sent to the Node process alone, leaves running git commands running. execa killed them. A signal sent to the process group, such as Ctrl+C in a terminal, still reaches git.
+- When git prints more than 10 MB, the error is a plain `Error` with the message `stdout maxBuffer exceeded`, not a `MaxBufferError`.
+- On Windows, git must be `git.exe` in `PATH`. execa also ran a `git.cmd` or `git.bat`. Git for Windows puts `git.exe` in `PATH`.
+
 ## 2.0.0
 
 Breaking: `commitInfo()` returns other values than 1.x.

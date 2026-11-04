@@ -3,12 +3,15 @@ on: push
 jobs:
   ci:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: ${{ matrix.node }}
       - run: npm ci
       - run: npm test
       # - if: github.ref == 'refs/heads/master'
@@ -20,7 +23,7 @@ jobs:
         uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: 22
       - run: npm ci
       - run: |
           cp .github/workflows/event.json /home/runner/work/_temp/_github_workflow/event.json

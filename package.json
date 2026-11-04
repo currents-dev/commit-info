@@ -1,7 +1,7 @@
 {
   "name": "@currents/commit-info",
   "description": "Collects Git commit info from CI or from CLI",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "author": "Gleb Bahmutov <gleb.bahmutov@gmail.com>",
   "contributors": [
     "Gleb Bahmutov <gleb.bahmutov@gmail.com>",
@@ -27,13 +27,11 @@
       "post-merge": []
     }
   },
-  "engines": {
-    "node": ">=8"
-  },
   "files": [
     "src/*.js",
     "src/index.d.ts",
-    "!src/*-spec.js"
+    "!src/*-spec.js",
+    "!src/utils-e2e.js"
   ],
   "homepage": "https://github.com/currents-dev/commit-info#readme",
   "keywords": [
@@ -64,8 +62,8 @@
     "pretty": "prettier-standard 'src/*.js'",
     "size": "t=\"$(npm pack .)\"; wc -c \"${t}\"; tar tvf \"${t}\"; rm \"${t}\";",
     "test": "npm run unit",
-    "unit": "mocha src/*-spec.js",
-    "gha-e2e": "mocha src/utils-e2e.js",
+    "unit": "vitest run --project unit",
+    "gha-e2e": "vitest run --project e2e",
     "semantic-release": "semantic-release pre && npm publish --access public && semantic-release post"
   },
   "release": {
@@ -78,29 +76,26 @@
   },
   "devDependencies": {
     "ban-sensitive-files": "1.9.2",
+    "bluebird": "3.5.5",
     "chdir-promise": "0.6.2",
+    "check-more-types": "2.24.0",
     "dependency-check": "4.1.0",
     "deps-ok": "1.4.1",
     "dont-crack": "1.2.1",
     "git-issues": "1.3.1",
     "github-post-release": "1.13.1",
+    "lazy-ass": "1.6.0",
     "license-checker": "24.1.0",
-    "mocha": "6.2.1",
     "mocked-env": "1.3.1",
     "pre-git": "3.17.1",
     "prettier-standard": "8.0.1",
     "semantic-release": "17.2.3",
     "simple-commit-message": "4.1.3",
-    "sinon": "17.0.1",
-    "snap-shot-it": "7.9.3",
     "standard": "13.1.0",
-    "stub-spawn-once": "2.3.0"
+    "stub-spawn-once": "2.3.0",
+    "vitest": "4.1.12"
   },
   "dependencies": {
-    "bluebird": "3.5.5",
-    "check-more-types": "2.24.0",
-    "debug": "4.3.4",
-    "execa": "1.0.0",
-    "lazy-ass": "1.6.0"
+    "debug": "4.4.3"
   }
 }

@@ -5,7 +5,6 @@ const is = require('check-more-types')
 const chdir = require('chdir-promise')
 const { stubSpawnOnce } = require('stub-spawn-once')
 const Promise = require('bluebird')
-const snapshot = require('snap-shot-it')
 const { join } = require('path')
 const assert = require('assert')
 const { execFileSync } = require('child_process')
@@ -15,16 +14,16 @@ const util = require('util')
 const createDebug = require('debug')
 const mockedEnv = require('mocked-env')
 
-/* eslint-env mocha */
+/* global describe, it, beforeAll, beforeEach, afterEach, expect */
 describe('git-api', () => {
   const { gitCommands } = require('./git-api')
 
-  context('getGitBranch', () => {
+  describe('getGitBranch', () => {
     const { getGitBranch } = require('./git-api')
 
     let currentBranch
 
-    before(() => {
+    beforeAll(() => {
       return getGitBranch().then(x => {
         currentBranch = x
         console.log('current git branch is', x)
@@ -82,7 +81,7 @@ describe('git-api', () => {
       return Promise.props({
         subject: getSubject(),
         body: getBody()
-      }).then(snapshot)
+      }).then(value => expect(value).toMatchSnapshot())
     })
   })
 
@@ -111,12 +110,16 @@ describe('git-api', () => {
         sha: getSha(),
         remote: getRemoteOrigin(),
         timestamp: getTimestamp()
-      }).then(snapshot)
+      }).then(value => expect(value).toMatchSnapshot())
     })
   })
-  describe('in a repository', function () {
-    this.timeout(10000)
+  it('throws when the folder is not a string', () => {
+    const { getMessage, getGitBranch } = require('./git-api')
+    assert.throws(() => getMessage(123), /^Error: missing repo path 123$/)
+    assert.throws(() => getGitBranch(true), /^Error: missing repo path true$/)
+  })
 
+  describe('in a repository', { timeout: 10000 }, () => {
     const TOKEN = 'glcbt-64_SECRET_TOKEN'
     const { runGitCommandWithError, readRemoteOrigin } = require('./git-api')
 

@@ -35,7 +35,7 @@ jobs:
       - uses: actions/setup-node@v4
         if: ${{ !matrix.container }}
         with:
-          node-version: 16
+          node-version: 22
       # the checkout belongs to another user than the container's root
       - if: ${{ matrix.container }}
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"

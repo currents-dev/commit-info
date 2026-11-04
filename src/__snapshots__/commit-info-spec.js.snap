@@ -1,0 +1,76 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`commit-info > combination with environment variables > has certain api 1`] = `
+[
+  "commitInfo",
+  "getBranch",
+  "getMessage",
+  "getEmail",
+  "getAuthor",
+  "getSha",
+  "getRemoteOrigin",
+  "getSubject",
+  "getTimestamp",
+  "getBody",
+  "getCiCommitInfo",
+  "detectCiProvider",
+  "removeCredentials",
+]
+`;
+
+exports[`commit-info > combination with environment variables > returns information 1`] = `
+{
+  "author": "John Doe",
+  "branch": "test-branch",
+  "email": "user@company.com",
+  "ghaEventData": undefined,
+  "message": "some git message",
+  "remote": "git@github.com/repo",
+  "sha": "abc123",
+  "timestamp": "123",
+}
+`;
+
+exports[`commit-info > no environment variables > has certain api 1`] = `
+[
+  "commitInfo",
+  "getBranch",
+  "getMessage",
+  "getEmail",
+  "getAuthor",
+  "getSha",
+  "getRemoteOrigin",
+  "getSubject",
+  "getTimestamp",
+  "getBody",
+  "getCiCommitInfo",
+  "detectCiProvider",
+  "removeCredentials",
+]
+`;
+
+exports[`commit-info > no environment variables > returns information 1`] = `
+{
+  "author": "John Doe",
+  "branch": "test-branch",
+  "email": "me@foo.com",
+  "ghaEventData": undefined,
+  "message": "important commit",
+  "remote": "git@github.com/repo",
+  "sha": "abc123",
+  "timestamp": "123",
+}
+`;
+
+exports[`commit-info > no environment variables > returns nulls for missing fields 1`] = `
+{
+  "author": null,
+  "branch": "test-branch",
+  "email": "me@foo.com",
+  "ghaEventData": undefined,
+  "message": null,
+  "remote": null,
+  "sha": "abc123",
+  "timestamp": "123",
+}
+`;
