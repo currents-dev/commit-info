@@ -5,7 +5,7 @@ Collects Git commit info from git CLI
 
 ## Install
 
-Requires [Node](https://nodejs.org/en/) version 8 or above.
+Tested on [Node.js](https://nodejs.org/en/) 22 and 24.
 
 ```sh
 npm install --save @currents/commit-info
