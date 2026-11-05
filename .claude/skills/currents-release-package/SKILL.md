@@ -1,6 +1,6 @@
 ---
 name: currents-release-package
-description: Release @currents/commit-info to npm — the version and CHANGELOG commit, the PR, the publish workflow and the check of the published package. Use for latest releases and for alpha and beta prereleases.
+description: Release @currents/commit-info to npm — the version and CHANGELOG commit, the PR, the #releases announcement in Slack, the publish workflow and the check of the published package. Use for latest releases and for alpha and beta prereleases.
 argument-hint: <version> [channel]
 ---
 
@@ -10,9 +10,11 @@ Arguments: the version and the npm channel. Without a channel, a version like
 `3.1.0` goes to `latest` and `3.1.0-beta.0` goes to `beta`. Ask for anything
 missing.
 
-Publishing changes the npm package and its dist-tag. The operator runs the
-publish command; give it ready to run with `!`. You prepare the release
-commit, open the PR, merge it when approved, and check the result.
+A release changes the npm package and its dist-tag, and adds messages in
+`#releases`. The operator runs the publish command; give it ready to run with
+`!`. You prepare the release commit, open the PR, merge it when approved, post
+the Slack messages after the operator approves each draft, and check the
+result.
 
 ## How releases work here
 
@@ -25,6 +27,8 @@ commit, open the PR, merge it when approved, and check the result.
 - The repo has no tags or GitHub releases for versions. `CHANGELOG.md` is
   written by hand, with one `## <version>` section per latest release.
 - PRs are merged with a merge commit and need one approval.
+- There is no Linear release pipeline for commit-info. The publish workflow
+  does not post to Slack.
 
 ## 1. Before you start
 
@@ -76,7 +80,31 @@ For latest:
 For alpha or beta, push the `release/<version>` branch. It needs no PR: the
 publish runs from the branch.
 
-## 5. Publish
+## 5. Announce the release in Slack
+
+Channel: `#releases` (`C075P0RFGAW`). Draft the message, show it to the
+operator, and post it with `slack_send_message` only after they approve. Use
+Slack formatting: `*bold*`, `<url|label>` links and `•` bullets. Markdown
+links do not render.
+
+```text
+:rocket: Release: `@currents/commit-info <version>` (npm `<channel>`)
+
+<PR url|#NNN> · <compare url|Diff> · <CHANGELOG url|CHANGELOG>
+
+<what users of the package notice, from the CHANGELOG section>
+
+*Needs attention*
+• <breaking changes, and what callers have to change>
+
+Issues: <Linear issue url|ENG-NNN>
+```
+
+Leave out a line that has nothing in it. Keep the message's `ts` for step 7:
+it is the `p<digits>` part of the permalink, with a decimal point before the
+last six digits (`p1787270016651819` → `1787270016.651819`).
+
+## 6. Publish
 
 Give the operator the publish command. The ref is `master` for latest, and
 the `release/<version>` branch for alpha or beta:
@@ -85,7 +113,7 @@ the `release/<version>` branch for alpha or beta:
 gh workflow run publish.yaml --repo currents-dev/commit-info --ref <ref> -f channel=<channel>
 ```
 
-## 6. Check the published package
+## 7. Check the published package
 
 - Watch the publish run to the end: `gh run watch <run id> --exit-status`.
 - `npm view @currents/commit-info dist-tags` shows the new version on the
@@ -104,8 +132,30 @@ npm deprecate @currents/commit-info@<version> "<what is broken>; use <previous v
 
 Do not unpublish: lockfiles that already have the version stop installing.
 
+Then reply to the announcement from step 5. Show the draft first, as before.
+
+```
+slack_send_message({
+  channel_id: 'C075P0RFGAW',
+  thread_ts: <ts from step 5>,
+  reply_broadcast: true,
+  message: ...
+})
+```
+
+```text
+*@currents/commit-info <version>* is on npm `<channel>`.
+
+Checked from npm: <one line per check from step 3>
+
+<npm url|npm> · <publish run url|Publish run>
+```
+
+For alpha and beta, post the reply without `reply_broadcast`. If you rolled
+the version back, say so in the reply.
+
 ## Report
 
-End with a table of the steps — release commit, PR, merge, publish run, npm
-dist-tag, check from npm — each linked to its PR, run or npm page, with the
-evidence you checked.
+End with a table of the steps — release commit, PR, merge, Slack
+announcement, publish run, npm dist-tag, check from npm, Slack reply — each
+linked to its PR, run, message or npm page, with the evidence you checked.
